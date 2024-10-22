@@ -1,0 +1,151 @@
+/* General Body Styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    text-align: center;
+    margin: 50px;
+}
+
+/* Titles */
+h1 {
+    color: #333;
+}
+
+/* Logo */
+img {
+    margin-bottom: 20px;
+}
+
+/* Flash messages */
+.flash-messages {
+    list-style-type: none; /* Remove bullet points */
+    padding: 0; /* Remove default padding */
+    margin: 20px 0; /* Add margin for spacing */
+    color: #333; /* Dark color for visibility */
+}
+
+.flash-messages li {
+    margin: 5px 0; /* Space between messages */
+    font-size: 16px; /* Adjust font size */
+}
+
+/* Box for each form */
+.upload-box,
+.group-selection,
+.gene-selection,
+.annotation-selection {
+    background-color: #fff; /* White background for the box */
+    border: 1px solid #ccc; /* Border for the box */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1); /* Shadow for depth */
+    padding: 5px; /* Reduce padding inside the box */
+    margin: 10px auto; /* Reduce margin to make the space between boxes smaller */
+    max-width: 400px; /* Maximum width for uniformity */
+    display: flex;
+    flex-direction: column; /* Arrange items vertically */
+    align-items: center; /* Center items horizontally */
+    height: auto; /* Allow the height to adjust based on content, or set to a fixed value (e.g., height: 150px;) */
+    overflow: hidden; /* Hide overflow if content exceeds the box height */
+}
+/* Form Styling */
+form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 2px; /* Smaller padding for the form */
+    margin: 0; /* Remove margin */
+    align-items: center; /* Center items within the form */
+}
+
+label {
+    margin-bottom: 2px; /* Further reduce margin below labels */
+    font-weight: bold;
+    text-align: left;
+    width: 100%;
+}
+
+/* Input fields */
+input[type="text"], input[type="password"] {
+    width: 100%; /* Full width */
+    max-width: 200px; /* Control the maximum width of the input fields */
+    padding: 2px; /* Smaller padding for even shorter input height */
+    margin-bottom: 4px; /* Reduce margin below input fields */
+    border: 1px solid #ccc;
+    border-radius: 3px; /* Smaller border radius */
+    box-sizing: border-box;
+}
+
+select {
+    width: 120px; /* Skinnier width for select boxes */
+    padding: 2px; /* Smaller padding for even shorter select height */
+    margin-bottom: 4px; /* Reduce margin below select boxes */
+    border: 1px solid #ccc;
+    border-radius: 3px; /* Smaller border radius */
+    box-sizing: border-box;
+}
+
+/* Submit Button */
+input[type="submit"] {
+    width: 80px; /* Smaller button width */
+    padding: 2px; /* Smaller padding for a shorter button height */
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 3px; /* Smaller border radius */
+    transition: background-color 0.3s; /* Smooth transition */
+}
+
+input[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+
+/* Spinner for upload */
+.spinner {
+    display: none; /* Hidden by default */
+    border: 4px solid rgba(255, 255, 255, 0.3); /* Light gray background */
+    border-left-color: #3498db; /* Blue color */
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite; /* Spin animation */
+    margin-left: 10px; /* Space between text and spinner */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Plot Styling */
+.group-plot, .gene-plot {
+    margin-top: 20px; /* Space above plots */
+    text-align: center; /* Center the plots */
+}
+
+/* CSS to control scrolling behavior */
+.table-responsive {
+    /* No need for overflow; control will be done in DataTable */
+    max-height: 400px; /* You can adjust this height as needed */
+}
+
+.dataTables_wrapper {
+    width: 100%; /* Full width for the DataTable wrapper */
+}
+
+.dataTables_scrollBody {
+    overflow: auto; /* Enable scrolling on the DataTable body */
+    max-height: 300px; /* Ensure the scrollable area has a height */
+}
+
+.table-container {
+    max-height: 500px; /* Set a maximum height for the container */
+    overflow: auto; /* Enable scrolling for the container */
+    width: 100%;
+}
+
+#annotation-table {
+    width: 100%;  /* Make the table take full width */
+    table-layout: auto;  /* Allow automatic column sizing */
+}
