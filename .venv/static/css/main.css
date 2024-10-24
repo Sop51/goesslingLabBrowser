@@ -1,14 +1,27 @@
 /* General Body Styling */
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
+    font-family: 'Source Sans Pro', sans-serif; /* Clean, modern font */
+    background-color: #f0f0f0; /* Light neutral background */
+    color: #4a4a4a; /* Softer dark gray for text */
     text-align: center;
-    margin: 50px;
+    margin: 0;
+    padding: 50px;
+    line-height: 1.6;
 }
 
 /* Titles */
+h1, h5 {
+    color: #2c3e50; /* Darker slate color for contrast */
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
 h1 {
-    color: #333;
+    font-size: 2.5rem;
+}
+
+h5 {
+    font-size: 1.25rem;
 }
 
 /* Logo */
@@ -18,99 +31,91 @@ img {
 
 /* Flash messages */
 .flash-messages {
-    list-style-type: none; /* Remove bullet points */
-    padding: 0; /* Remove default padding */
-    margin: 20px 0; /* Add margin for spacing */
-    color: #333; /* Dark color for visibility */
+    list-style-type: none;
+    padding: 10px;
+    margin: 20px auto;
+    color: #fff;
+    background-color: #95a5a6; /* Muted neutral gray */
+    border-radius: 8px;
+    max-width: 400px;
 }
 
 .flash-messages li {
-    margin: 5px 0; /* Space between messages */
-    font-size: 16px; /* Adjust font size */
+    margin: 5px 0;
+    font-size: 16px;
 }
 
-/* Box for each form */
-.upload-box,
-.group-selection,
-.gene-selection,
-.annotation-selection {
-    background-color: #fff; /* White background for the box */
-    border: 1px solid #ccc; /* Border for the box */
-    border-radius: 10px; /* Rounded corners */
-    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1); /* Shadow for depth */
-    padding: 5px; /* Reduce padding inside the box */
-    margin: 10px auto; /* Reduce margin to make the space between boxes smaller */
-    max-width: 400px; /* Maximum width for uniformity */
-    display: flex;
-    flex-direction: column; /* Arrange items vertically */
-    align-items: center; /* Center items horizontally */
-    height: auto; /* Allow the height to adjust based on content, or set to a fixed value (e.g., height: 150px;) */
-    overflow: hidden; /* Hide overflow if content exceeds the box height */
-}
-/* Form Styling */
-form {
+/* Box Styling */
+.upload-box, .group-selection, .gene-selection, .annotation-selection {
+    background-color: #fff;
+    border: 1px solid #dcdcdc;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 450px;
     display: flex;
     flex-direction: column;
+    align-items: center;
+}
+
+/* Form Styling */
+form {
     width: 100%;
-    padding: 2px; /* Smaller padding for the form */
-    margin: 0; /* Remove margin */
-    align-items: center; /* Center items within the form */
+    padding: 0;
+    margin: 0;
 }
 
 label {
-    margin-bottom: 2px; /* Further reduce margin below labels */
-    font-weight: bold;
-    text-align: left;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #7f8c8d; /* Muted gray */
     width: 100%;
+    text-align: left;
 }
 
 /* Input fields */
-input[type="text"], input[type="password"] {
-    width: 100%; /* Full width */
-    max-width: 200px; /* Control the maximum width of the input fields */
-    padding: 2px; /* Smaller padding for even shorter input height */
-    margin-bottom: 4px; /* Reduce margin below input fields */
-    border: 1px solid #ccc;
-    border-radius: 3px; /* Smaller border radius */
+input[type="text"], input[type="password"], select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 12px;
+    border: 1px solid #bfbfbf;
+    border-radius: 6px;
+    background-color: #f7f7f7; /* Light neutral background for inputs */
     box-sizing: border-box;
+    transition: border-color 0.3s ease;
 }
 
-select {
-    width: 120px; /* Skinnier width for select boxes */
-    padding: 2px; /* Smaller padding for even shorter select height */
-    margin-bottom: 4px; /* Reduce margin below select boxes */
-    border: 1px solid #ccc;
-    border-radius: 3px; /* Smaller border radius */
-    box-sizing: border-box;
+input[type="text"]:focus, input[type="password"]:focus, select:focus {
+    border-color: #7f8c8d; /* Muted gray border on focus */
 }
 
 /* Submit Button */
-input[type="submit"] {
-    width: 80px; /* Smaller button width */
-    padding: 2px; /* Smaller padding for a shorter button height */
-    cursor: pointer;
-    background-color: #007bff;
+input[type="submit"], button[type="submit"] {
+    width: 100%;
+    padding: 10px;
+    background-color: #6c7a89; /* Muted greenish-gray */
     color: white;
     border: none;
-    border-radius: 3px; /* Smaller border radius */
-    transition: background-color 0.3s; /* Smooth transition */
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
-input[type="submit"]:hover {
-    background-color: #0056b3;
+input[type="submit"]:hover, button[type="submit"]:hover {
+    background-color: #3d566e; /* Slightly darker on hover */
 }
 
-
-/* Spinner for upload */
+/* Spinner */
 .spinner {
-    display: none; /* Hidden by default */
-    border: 4px solid rgba(255, 255, 255, 0.3); /* Light gray background */
-    border-left-color: #3498db; /* Blue color */
+    display: none;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-left-color: #3498db;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    animation: spin 1s linear infinite; /* Spin animation */
-    margin-left: 10px; /* Space between text and spinner */
+    width: 25px;
+    height: 25px;
+    animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
@@ -120,32 +125,61 @@ input[type="submit"]:hover {
 
 /* Plot Styling */
 .group-plot, .gene-plot {
-    margin-top: 20px; /* Space above plots */
-    text-align: center; /* Center the plots */
+    margin-top: 20px;
+    text-align: center;
 }
 
-/* CSS to control scrolling behavior */
-.table-responsive {
-    /* No need for overflow; control will be done in DataTable */
-    max-height: 400px; /* You can adjust this height as needed */
-}
-
-.dataTables_wrapper {
-    width: 100%; /* Full width for the DataTable wrapper */
-}
-
-.dataTables_scrollBody {
-    overflow: auto; /* Enable scrolling on the DataTable body */
-    max-height: 300px; /* Ensure the scrollable area has a height */
-}
-
+/* Table */
 .table-container {
-    max-height: 500px; /* Set a maximum height for the container */
-    overflow: auto; /* Enable scrolling for the container */
+    max-height: 500px;
+    overflow: auto;
     width: 100%;
 }
 
 #annotation-table {
-    width: 100%;  /* Make the table take full width */
-    table-layout: auto;  /* Allow automatic column sizing */
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#annotation-table thead {
+    background-color: #f7f7f7;
+    border-bottom: 2px solid #dcdcdc;
+}
+
+#annotation-table th, #annotation-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #eaeaea;
+}
+
+/* Hover Effects */
+.upload-box:hover, .group-selection:hover, .gene-selection:hover, .annotation-selection:hover {
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.08); /* Slightly stronger shadow on hover */
+    transform: translateY(-3px);
+    transition: all 0.3s ease;
+}
+
+input[type="submit"]:hover {
+    background-color: #3d566e; /* Darken button on hover */
+}
+
+/* Input Group Styling for File Upload */
+.upload-box .input-group {
+    display: flex; /* Use flexbox to align elements */
+    align-items: center; /* Center items vertically */
+    justify-content: center; /* Center items horizontally */
+    width: 100%; /* Ensure it takes full width */
+    margin-bottom: 10px;
+}
+
+.upload-box .form-control {
+    max-width: 300px; /* Control the width of the "No file chosen" input */
+    height: 38px; /* Consistent height for the input and button */
+    border-radius: 4px 0 0 4px; /* Rounded corners on the left side */
+}
+
+.upload-box .input-group-append .btn {
+    height: 38px; /* Ensure consistent height with the file input */
+    border-radius: 0 4px 4px 0; /* Rounded corners on the right side */
+    padding: 0 12px; /* Adjust padding for a balanced look */
 }
