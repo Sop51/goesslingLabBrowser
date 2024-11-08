@@ -22,9 +22,8 @@ class GroupForm(FlaskForm):
 
 # create a class for the file upload
 class UploadFileForm(FlaskForm):
-    file = FileField('Upload an h5ad file', validators=[
-        FileRequired(),
-        FileAllowed(['h5ad'], 'Only .h5ad files are allowed!')
+    file = FileField('Upload an h5Seurat file', validators=[
+        FileRequired()
     ])
     submit = SubmitField('Upload')
 

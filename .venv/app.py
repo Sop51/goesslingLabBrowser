@@ -1,14 +1,20 @@
+from importlib.metadata import metadata
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from forms import GeneForm, GroupForm, UploadFileForm, LoginForm, AnnotationForm
 import os
 from dotenv import load_dotenv
-import scanpy as sc
 import io
 import base64
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
 from numpy.f2py.symbolic import as_string
+import rpy2.robjects as ro
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.conversion import localconverter
+import tempfile
+
 
 # load environment variables from .env file
 load_dotenv()
@@ -17,6 +23,7 @@ load_dotenv()
 app = Flask(__name__)
 # configure the secret key
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_secret_key')
+app.config['WTF_CSRF_ENABLED'] = False
 
 # credentials from environment variables
 USERNAME = os.getenv('USERNAME')
@@ -32,78 +39,97 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # define a function to plot the gene UMAP
 def plot_gene_umap(gene, file):
-    # load the adata object
-    adata = sc.read(file)
-
-    # Check if the gene exists in the AnnData object
-    if gene not in adata.var_names:
-        return None  # Return None if the gene is not found
-
-    # create the plot
-    plt.figure(figsize=(30, 30))  # set the size of the plot
-    sc.pl.umap(adata, color=gene, show=False)  # show must be false to avoid rendering immediately
-    # save the plot to a BytesIO object
-    img = io.BytesIO()
-    plt.savefig(img, format='png')
-    plt.close()  # close the plot to free memory
-    img.seek(0)  # seek to the start of the object
-    # encode the image in base64
-    plot_url = base64.b64encode(img.getvalue()).decode('utf-8')
-    # return the plot URL for rendering
-    return f"data:image/png;base64,{plot_url}"  # Data URL format
+    pandas2ri.activate()
+    # Load the required libraries in R
+    ro.r('library(Seurat)')
+    ro.r('library(SeuratDisk)')
+    # Transfer the file path to R
+    ro.r(f'input_file <- "{file}"')
+    # Read in the Seurat file (change this based on the file type)
+    ro.r('seurat_obj <- LoadH5Seurat(input_file)')
+    # Check if the gene exists in the Seurat object
+    gene_check = ro.r(f'"{gene}" %in% rownames(seurat_obj)')
+    if not gene_check[0]:
+        return jsonify({"error": f"Gene '{gene}' not found in the dataset."})
+    # Create the UMAP plot for the gene using Seurat's FeaturePlot
+    ro.r(f'gene_plot <- FeaturePlot(seurat_obj, features = "{gene}", order=TRUE, min.cutoff = "q10", repel = TRUE)')
+    # Create a temporary file to save the plot
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+        temp_filename = temp_file.name
+        # Use the file name to create the plot
+        ro.r(f'png("{temp_filename}", width = 800, height = 800, res = 150)')
+        # Print the plot to the device
+        ro.r('print(gene_plot)')
+        # Finalize the plot
+        ro.r('dev.off()')
+    # Now read the plot file and convert to base64
+    with open(temp_filename, "rb") as img_file:
+        img_data = img_file.read()
+        plot_url = base64.b64encode(img_data).decode('utf-8')
+    # Remove the temporary file after processing
+    os.remove(temp_filename)
+    # Return the plot as a base64-encoded string to embed in HTML
+    return f"data:image/png;base64,{plot_url}"
 
 # define a function to plot the group umap
 def plot_group_umap(group, file):
-    # load the adata object
-    adata = sc.read(file)
-    # create the plot
-    plt.figure(figsize=(30, 30))
-    sc.pl.umap(
-        adata,
-        color=group,
-        legend_loc="on data",
-        frameon=False,
-        legend_fontsize=10,
-        legend_fontoutline=2,
-        show=False  # Ensure not to show the plot
-    )
-    # save the plot to a BytesIO object
-    img = io.BytesIO()
-    plt.savefig(img, format='png', bbox_inches='tight')  # Add bbox_inches to ensure no cutting off
-    plt.close()  # close the plot to free memory
-    img.seek(0)  # move to the start of the object
-    # encode the image in base64
-    plot_url = base64.b64encode(img.getvalue()).decode('utf-8')
-    # return the plot URL for rendering
+    pandas2ri.activate()
+    # Load the Seurat library in R
+    ro.r('library(Seurat)')
+    ro.r('library(SeuratDisk)')
+    ro.r('library(ggplot2)')
+    # Transfer the file path to R
+    ro.r(f'input_file <- "{file}"')
+    # Read the Seurat object (make sure the file is in an acceptable Seurat format, such as .rds)
+    ro.r('seurat_obj <- LoadH5Seurat(input_file)')
+    # Check if the group exists in the Seurat object metadata
+    group_check = ro.r(f'"{group}" %in% colnames(seurat_obj@meta.data)')
+    if not group_check[0]:
+        return jsonify({"error": f"Group '{group}' not found in the dataset."})
+    # Create the UMAP plot for the group using Seurat's DimPlot
+    ro.r(
+        f'group_plot <- DimPlot(seurat_obj, reduction = "umap", group.by = "{group}", label = TRUE, label.size = 5, repel = TRUE)')
+    # Create a temporary file to save the plot
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+        temp_filename = temp_file.name
+        # Use the file name to create the plot
+        ro.r(f'png("{temp_filename}", width = 800, height = 800, res = 150)')
+        # Print the plot to the device
+        ro.r('print(group_plot)')
+        # Finalize the plot
+        ro.r('dev.off()')
+    # Now read the plot file and convert to base64
+    with open(temp_filename, "rb") as img_file:
+        img_data = img_file.read()
+        plot_url = base64.b64encode(img_data).decode('utf-8')
+    # Remove the temporary file after processing
+    os.remove(temp_filename)
+    # Return the plot as a base64-encoded string to embed in HTML
     return f"data:image/png;base64,{plot_url}"
 
 # define a function to generate the differential expression table based on the annotation
 def generate_table(annotation, file):
-    # load the adata object
-    adata = sc.read_h5ad(file)
-    # get the df with the appropriate information
-    filtered_de_df = pd.DataFrame(adata.varm['filtered_de'], index=adata.var_names)
-    # initialize the df to hold the dataframes
-    df_dict = {}
-    # loop through columns in the df
-    for col in filtered_de_df.columns:
-        match = re.match(r'(\d+):(.+)', col)  # regex to match digits followed by a colon
-        if match:
-            prefix = match.group(1)  # get the numeric prefix
+    pandas2ri.activate()
+    # load the required seurat library
+    ro.r('library(Seurat)')
+    ro.r('library(SeuratDisk)')
 
-            # add column to the corresponding df in the dictionary
-            if prefix not in df_dict:
-                df_dict[prefix] = pd.DataFrame()  # initialize as an empty df if the prefix is not already a key
-            df_dict[prefix][match.group(2)] = filtered_de_df[col]  # add the column to the df
+    # Load the Seurat object from file (adjust path to Seurat object)
+    ro.r(f"zf <- LoadH5Seurat('{file}')")
 
-    # extract only the wanted columns
-    final_df = df_dict[annotation][['log2Mean', 'log2FC', 'percentage', 'percentage_fold_change', 'auroc', 'mwu_pval']]
+    ro.r(f'''
+    markers <- FindMarkers(zf, ident.1 = "{annotation}", group.by = "cell.type.9.long")
+    markers <- as.data.frame(markers)
+    markers$gene <- rownames(markers)  # Add row names as a new column
+    rownames(markers) <- NULL
+    markers <- markers[, c("gene", "avg_log2FC", "pct.1", "pct.2", "p_val_adj")]
+    ''')
 
-    # Reset the index to include 'gene' as a regular column
-    final_df.reset_index(inplace=True)
-    final_df.rename(columns={'index': 'gene'}, inplace=True)
-
-    return(final_df)
+    # Convert result into a pandas dataframe
+    with (ro.default_converter + pandas2ri.converter).context():
+        markers_df = ro.conversion.get_conversion().rpy2py(ro.r('markers'))
+        print("Markers DataFrame:", markers_df)
+    return markers_df
 
 
 # create the login route
@@ -155,24 +181,57 @@ def home():
 
             # Reset annotations and selected group in the session after uploading
             session['filepath'] = filepath
-            adata = sc.read(filepath)
-            obs_columns = adata.obs.columns.tolist()
-            annotcols = adata.obs['leiden'].unique().tolist()
+
+            # load seurat
+            ro.r('library(Seurat)')
+            ro.r('library(SeuratDisk)')
+            ro.r(f"zf <- LoadH5Seurat('{filepath}')")
+
+            metadata_columns = []
+            annotcols = []
+
+            # get the col names for the umap plot
+            with localconverter(pandas2ri.converter):
+                meta_data_cols = ro.r(f'colnames(zf@meta.data)')
+                metadata_columns = [str(col) for col in meta_data_cols]
+
+            # get the annotation names for the table
+            with localconverter(pandas2ri.converter):
+                unique_values = ro.r(f'unique(zf@meta.data[["cell.type.9.long"]])')
+                annotcols = [str(val) for val in unique_values]
+
             session['ann_cols'] = annotcols
-            session['obs_columns'] = obs_columns
+            session['obs_columns'] = metadata_columns
             return redirect(url_for('home'))  # Redirect to avoid resubmission
         if 'existing_file' in request.form:
             selected_file = request.form['existing_file']
             if selected_file:
                 session['filepath'] = 'uploads/' + selected_file
+                filepath = session['filepath']
                 flash(f'File "{selected_file}" loaded successfully.', 'success')
 
-                # Load the adata object and update session data as before
-                adata = sc.read(session['filepath'])
-                obs_columns = adata.obs.columns.tolist()
-                annotcols = adata.obs['leiden'].unique().tolist()
+                # load seurat
+                ro.r('library(Seurat)')
+                ro.r('library(SeuratDisk)')
+                ro.r(f"zf <- LoadH5Seurat('{filepath}')")
+
+                metadata_columns = []
+                annotcols = []
+
+                # get the col names for the umap plot
+                with localconverter(pandas2ri.converter):
+                    meta_data_cols = ro.r(f'colnames(zf@meta.data)')
+                    metadata_columns = [str(col) for col in meta_data_cols]
+
+                # get the annotation names for the table
+                with localconverter(pandas2ri.converter):
+                    unique_values = ro.r(f'levels(zf@meta.data[["cell.type.9.long"]])')
+                    annotcols = [str(val) for val in unique_values]
+                    print(unique_values)
+
                 session['ann_cols'] = annotcols
-                session['obs_columns'] = obs_columns
+
+                session['obs_columns'] = metadata_columns
                 return redirect(url_for('home'))
 
     # Populate group and annotation forms based on session-stored names
@@ -300,4 +359,4 @@ def logout():
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, threaded=False)

@@ -20,12 +20,10 @@ $(document).ready(function() {
         "searching": true,
         "columns": [
             { "data": "gene" },
-            { "data": "log2Mean" },
-            { "data": "log2FC" },
-            { "data": "percentage" },
-            { "data": "percentage_fold_change" },
-            { "data": "auroc" },
-            { "data": "mwu_pval" }
+            { "data": "p_val_adj" },
+            { "data": "avg_log2FC" },
+            { "data": "pct.1" },
+            { "data": "pct.2" }
         ]
     });
 
