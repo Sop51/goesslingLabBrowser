@@ -13,18 +13,23 @@ $(document).ready(function() {
             "url": ajaxUrl,
             "dataSrc": ""
         },
-        "scrollY": "300px",
-        "scrollX": true,
+        "scrollY": "75vh",
         "scrollCollapse": true,
         "paging": true,
         "searching": true,
+        "lengthMenu": [10, 25, 50, 100],
+        "pageLength": 50,
         "columns": [
             { "data": "gene" },
-            { "data": "p_val_adj" },
             { "data": "avg_log2FC" },
-            { "data": "pct.1" },
-            { "data": "pct.2" }
-        ]
+            { "data": "pct1" },
+            { "data": "pct2" },
+            { "data": "p_val_adj" }
+        ],
+        "autoWidth": false, // Disable auto column width
+        "columnDefs": [
+        { "width": "20%", "targets": [0, 1, 2, 3, 4] }
+    ]
     });
 
     // Handle form submission

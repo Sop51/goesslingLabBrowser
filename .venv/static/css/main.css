@@ -129,18 +129,20 @@ input[type="submit"]:hover, button[type="submit"]:hover {
     text-align: center;
 }
 
-/* Table */
+/* Table container without fixed height */
 .table-container {
-    max-height: 500px;
-    overflow: auto;
-    width: 100%;
+    width: 100%; /* Take up the full width of the parent container */
+    margin-bottom: 20px; /* Optional: Add space below the table */
 }
 
+/* Table adjustments */
 #annotation-table {
-    width: 100%;
+    width: 100% !important; /* Ensure it takes full width of the container */
+    table-layout: auto; /* Allow columns to adjust based on content */
     border-collapse: collapse;
 }
 
+/* Table header styling */
 #annotation-table thead {
     background-color: #f7f7f7;
     border-bottom: 2px solid #dcdcdc;
@@ -151,6 +153,21 @@ input[type="submit"]:hover, button[type="submit"]:hover {
     text-align: left;
     border-bottom: 1px solid #eaeaea;
 }
+
+/* Optional: Set column widths for uniformity (adjust if needed) */
+#annotation-table th {
+    width: 20%; /* Set each header to take up equal space */
+}
+
+#annotation-table td {
+    width: 20%; /* Same width for table data cells */
+}
+
+/* Remove the table wrapper's horizontal scrolling */
+#annotation-table_wrapper {
+    width: 100%;
+}
+
 
 /* Hover Effects */
 .upload-box:hover, .group-selection:hover, .gene-selection:hover, .annotation-selection:hover {

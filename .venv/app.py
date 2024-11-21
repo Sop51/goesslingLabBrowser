@@ -1,5 +1,4 @@
 from importlib.metadata import metadata
-
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from forms import GeneForm, GroupForm, UploadFileForm, LoginForm, AnnotationForm
 import os
@@ -14,7 +13,6 @@ import rpy2.robjects as ro
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 import tempfile
-
 
 # load environment variables from .env file
 load_dotenv()
@@ -37,16 +35,17 @@ app.config['UPLOAD_FILES_DEST'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# create a global variable to hold the loaded seurat object
+seurat_obj = None
+
 # define a function to plot the gene UMAP
 def plot_gene_umap(gene, file):
     pandas2ri.activate()
     # Load the required libraries in R
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
-    # Transfer the file path to R
-    ro.r(f'input_file <- "{file}"')
-    # Read in the Seurat file (change this based on the file type)
-    ro.r('seurat_obj <- LoadH5Seurat(input_file)')
+    # load in the seurat obj
+    global seurat_obj
     # Check if the gene exists in the Seurat object
     gene_check = ro.r(f'"{gene}" %in% rownames(seurat_obj)')
     if not gene_check[0]:
@@ -78,10 +77,8 @@ def plot_group_umap(group, file):
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
-    # Transfer the file path to R
-    ro.r(f'input_file <- "{file}"')
-    # Read the Seurat object (make sure the file is in an acceptable Seurat format, such as .rds)
-    ro.r('seurat_obj <- LoadH5Seurat(input_file)')
+    # load in the seurat obj
+    global seurat_obj
     # Check if the group exists in the Seurat object metadata
     group_check = ro.r(f'"{group}" %in% colnames(seurat_obj@meta.data)')
     if not group_check[0]:
@@ -114,11 +111,11 @@ def generate_table(annotation, file):
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
 
-    # Load the Seurat object from file (adjust path to Seurat object)
-    ro.r(f"zf <- LoadH5Seurat('{file}')")
+    # load in the seurat obj
+    global seurat_obj
 
     ro.r(f'''
-    markers <- FindMarkers(zf, ident.1 = "{annotation}", group.by = "cell.type.9.long")
+    markers <- FindMarkers(seurat_obj, ident.1 = "{annotation}", group.by = "cell.type.9.long")
     markers <- as.data.frame(markers)
     markers$gene <- rownames(markers)  # Add row names as a new column
     rownames(markers) <- NULL
@@ -128,6 +125,8 @@ def generate_table(annotation, file):
     # Convert result into a pandas dataframe
     with (ro.default_converter + pandas2ri.converter).context():
         markers_df = ro.conversion.get_conversion().rpy2py(ro.r('markers'))
+        markers_df.columns = markers_df.columns.str.strip()
+        markers_df.columns = ['gene', 'avg_log2FC', 'pct1', 'pct2', 'p_val_adj']
         print("Markers DataFrame:", markers_df)
     return markers_df
 
@@ -161,6 +160,9 @@ def home():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
+    # define the global seurat obj
+    global seurat_obj
+
     # Create form instances
     fileform = UploadFileForm()
     annotationform = AnnotationForm()
@@ -185,19 +187,21 @@ def home():
             # load seurat
             ro.r('library(Seurat)')
             ro.r('library(SeuratDisk)')
-            ro.r(f"zf <- LoadH5Seurat('{filepath}')")
+            ro.r(f"seurat_obj <- LoadH5Seurat('{filepath}')")
+            # store in the global variable
+            seurat_obj = ro.r('seurat_obj')
 
             metadata_columns = []
             annotcols = []
 
             # get the col names for the umap plot
             with localconverter(pandas2ri.converter):
-                meta_data_cols = ro.r(f'colnames(zf@meta.data)')
+                meta_data_cols = ro.r(f'colnames(seurat_obj@meta.data)')
                 metadata_columns = [str(col) for col in meta_data_cols]
 
             # get the annotation names for the table
             with localconverter(pandas2ri.converter):
-                unique_values = ro.r(f'unique(zf@meta.data[["cell.type.9.long"]])')
+                unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
                 annotcols = [str(val) for val in unique_values]
 
             session['ann_cols'] = annotcols
@@ -213,24 +217,27 @@ def home():
                 # load seurat
                 ro.r('library(Seurat)')
                 ro.r('library(SeuratDisk)')
-                ro.r(f"zf <- LoadH5Seurat('{filepath}')")
+                ro.r(f"seurat_obj <- LoadH5Seurat('{filepath}')")
+                # store in the global variable
+                seurat_obj = ro.r('seurat_obj')
+
+                print("Seurat object loaded:", seurat_obj)
 
                 metadata_columns = []
                 annotcols = []
 
                 # get the col names for the umap plot
                 with localconverter(pandas2ri.converter):
-                    meta_data_cols = ro.r(f'colnames(zf@meta.data)')
+                    meta_data_cols = ro.r(f'colnames(seurat_obj@meta.data)')
                     metadata_columns = [str(col) for col in meta_data_cols]
 
                 # get the annotation names for the table
                 with localconverter(pandas2ri.converter):
-                    unique_values = ro.r(f'levels(zf@meta.data[["cell.type.9.long"]])')
+                    unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
                     annotcols = [str(val) for val in unique_values]
                     print(unique_values)
 
                 session['ann_cols'] = annotcols
-
                 session['obs_columns'] = metadata_columns
                 return redirect(url_for('home'))
 
@@ -359,4 +366,4 @@ def logout():
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    app.run(debug=True, threaded=False)
+    app.run(debug=True, threaded=False, use_reloader=False)
