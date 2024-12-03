@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SingleCellViewer</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+    <!-- jQuery and DataTables -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
 </head>
 <body>
-    <h3 class="text-center">Visualizing Single Cell RNA-Seq Data</h3> <!-- Smaller header -->
-    <img src="{{ url_for('static', filename='image/goesslingLogo.png') }}" style="width:150px;height:65px;" class="d-block mx-auto mb-3"> <!-- Reduced margin-bottom -->
+    <h3 class="text-center">Visualizing Single Cell RNA-Seq Data</h3>
+    <img src="{{ url_for('static', filename='image/goesslingLogo.png') }}" style="width:150px;height:65px;" class="d-block mx-auto mb-3">
     <hr>
 
-    <!-- Flash messages -->
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <ul class="flash-messages">
@@ -26,129 +28,164 @@
         {% endif %}
     {% endwith %}
 
-<div class="container mt-3"> <!-- Reduced margin-top -->
-    <div class="row">
-        <!-- Upload Box -->
-        <div class="col-md-12">
-            <div class="upload-box p-2 mb-3"> <!-- Reduced padding and margin -->
-                <h5 class="mb-2">Upload File</h5> <!-- Reduced margin-bottom -->
-                <form id="uploadForm" action="{{ url_for('home') }}" method="POST" enctype="multipart/form-data" onsubmit="showSpinner()">
-                    {{ fileform.hidden_tag() }}
-                    <div class="input-group">
-                        {{ fileform.file(class='form-control') }}
-                        <div class="input-group-append">
-                            {{ fileform.submit(class='btn btn-sm btn-primary') }}  <!-- Smaller button -->
+    <div class="container mt-3">
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <!-- Tab 1 (Existing Content) -->
+            <li class="nav-item">
+                <a class="nav-link active" id="upload-tab" data-bs-toggle="tab" href="#upload" role="tab" aria-controls="upload" aria-selected="true">Overall</a>
+            </li>
+
+            <!-- Tab 2 (New Content) -->
+            <li class="nav-item">
+                <a class="nav-link" id="new-content-tab" data-bs-toggle="tab" href="#new-content" role="tab" aria-controls="new-content" aria-selected="false">Cluster Specific</a>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="myTabContent">
+            <!-- Tab 1 for the overall data (major clusters) -->
+            <div class="tab-pane fade show active" id="upload" role="tabpanel" aria-labelledby="upload-tab">
+                <!-- Upload, Group Plot, Gene Plot, Annotation, etc. -->
+                <div class="row">
+                    <!-- Upload Box -->
+                    <div class="col-md-12">
+                        <div class="upload-box p-2 mb-3">
+                            <h5 class="mb-2">Upload File</h5>
+                            <form id="uploadForm" action="{{ url_for('home') }}" method="POST" enctype="multipart/form-data" onsubmit="showSpinner()">
+                                {{ fileform.hidden_tag() }}
+                                <div class="input-group">
+                                    {{ fileform.file(class='form-control') }}
+                                    <div class="input-group-append">
+                                        {{ fileform.submit(class='btn btn-sm btn-primary') }}
+                                    </div>
+                                </div>
+                                <div class="spinner" id="spinner"></div>
+                            </form>
+                            <div class="existing-files mt-2">
+                                <h5 class="mb-2">Select Existing File</h5>
+                                <form id="existing-file-form" action="{{ url_for('home') }}" method="POST">
+                                    <select name="existing_file" class="form-control form-control-sm">
+                                        <option value="">-- Choose a file --</option>
+                                        {% for filename in existing_files %}
+                                            <option value="{{ filename }}">{{ filename }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary mt-2">Load File</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                    <div class="spinner" id="spinner"></div>
-                </form>
-                <div class="existing-files mt-2">
-                    <h5 class="mb-2">Select Existing File</h5>
-                    <form id="existing-file-form" action="{{ url_for('home') }}" method="POST">
-                        <select name="existing_file" class="form-control form-control-sm">
-                            <option value="">-- Choose a file --</option>
-                            {% for filename in existing_files %}
-                                <option value="{{ filename }}">{{ filename }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit" class="btn btn-sm btn-primary mt-2">Load File</button>
-                    </form>
+
+                    <!-- Group Plot Section -->
+                    <div class="col-md-6">
+                        <div id="group-plot-url" data-ajax-url="{{ url_for('plot_group') }}">
+                            <div class="group-selection box p-2 mb-3" id="group-section">
+                                <h5 class="mb-2">Select Group</h5>
+                                <form id="group-form" class="groupForm" enctype="multipart/form-data">
+                                    {{ groupform.hidden_tag() }}
+                                    <div class="form-group">
+                                        {{ groupform.group.label }}
+                                        {{ groupform.group(class='form-control form-control-sm') }}
+                                    </div>
+                                    <div>
+                                        {{ groupform.submit(class='btn btn-sm btn-primary') }}
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="plot-container" id="group-plot-container">
+                                {% if group_plot %}
+                                    <img src="{{ group_plot }}" alt="Group UMAP Plot" class="img-fluid" />
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gene Plot Section -->
+                    <div class="col-md-6">
+                        <div id="gene-plot-url" data-ajax-url="{{ url_for('plot_gene') }}">
+                            <div class="gene-selection box p-2 mb-3" id="gene-section">
+                                <h5 class="mb-2">Select Gene</h5>
+                                <form id="gene-form" class="geneForm" enctype="multipart/form-data">
+                                    {{ geneform.hidden_tag() }}
+                                    <div class="form-group">
+                                        {{ geneform.gene.label }}
+                                        {{ geneform.gene(class='form-control form-control-sm', size=20, placeholder='Enter a gene name') }}
+                                    </div>
+                                    <div>
+                                        {{ geneform.submit(class='btn btn-sm btn-primary') }}
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="plot-container" id="gene-plot-container">
+                                {% if gene_plot %}
+                                    <img src="{{ gene_plot }}" alt="UMAP Plot" class="img-fluid" />
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="col-md-12">
+                        <div class="annotation-selection box p-2 mb-3">
+                            <h5 class="mb-2">Select Annotation/Cluster To Display Table</h5>
+                            <form id="annotation-form"
+                                  data-ajax-url="{{ url_for('make_table') }}" method="POST">
+                                {{ annotationform.hidden_tag() }}
+                                <div class="annotation-enter">
+                                    {{ annotationform.annotation.label }}
+                                    {{ annotationform.annotation(class='annotation-control form-control form-control-sm') }}
+                                </div>
+                                <div>
+                                    {{ annotationform.submit(class='btn btn-sm btn-primary') }}
+                                </div>
+                            </form>
+                        </div>
+                        <div class="table-container">
+                            <table id="annotation-table" class="display" data-ajax-url="{{ url_for('table_data') }}">
+                                <thead>
+                                    <tr>
+                                        <th>gene</th>
+                                        <th>avg_log2FC</th>
+                                        <th>pct1</th>
+                                        <th>pct2</th>
+                                        <th>p_val_adj</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be dynamically loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div> <!-- End of upload box -->
 
-
-        <!-- Group Plot Section -->
-        <div class="col-md-6">
-            <div id="group-plot-url" data-ajax-url="{{ url_for('plot_group') }}">
-                <div class="group-selection box p-2 mb-3" id="group-section">
-                    <h5 class="mb-2">Select Group</h5>
-                    <form id="group-form" class="groupForm" enctype="multipart/form-data">
-                        {{ groupform.hidden_tag() }}
-                        <div class="form-group">
-                            {{ groupform.group.label }}
-                            {{ groupform.group(class='form-control form-control-sm') }}
-                        </div>
-                        <div>
-                            {{ groupform.submit(class='btn btn-sm btn-primary') }}
-                        </div>
-                    </form>
-                </div>
-                <div class="plot-container" id="group-plot-container">
-                    {% if group_plot %}
-                        <img src="{{ group_plot }}" alt="Group UMAP Plot" class="img-fluid" />
-                    {% endif %}
+            <!-- Tab 2 (New Content) -->
+            <div class="tab-pane fade" id="new-content" role="tabpanel" aria-labelledby="new-content-tab">
+                <h4>Page to look within the existing clusters</h4>
+                <!-- Example: -->
+                <div class="new-content-box">
+                    <h5>New Content Section</h5>
+                    <p>More new data or features can go here.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Gene Plot Section -->
-        <div class="col-md-6">
-            <div id="gene-plot-url" data-ajax-url="{{ url_for('plot_gene') }}">
-                <div class="gene-selection box p-2 mb-3" id="gene-section">
-                    <h5 class="mb-2">Select Gene</h5>
-                    <form id="gene-form" class="geneForm" enctype="multipart/form-data">
-                        {{ geneform.hidden_tag() }}
-                        <div class="form-group">
-                            {{ geneform.gene.label }}
-                            {{ geneform.gene(class='form-control form-control-sm', size=20, placeholder='Enter a gene name') }}
-                        </div>
-                        <div>
-                            {{ geneform.submit(class='btn btn-sm btn-primary') }}
-                        </div>
-                    </form>
-                </div>
-                <div class="plot-container" id="gene-plot-container">
-                    {% if gene_plot %}
-                        <img src="{{ gene_plot }}" alt="UMAP Plot" class="img-fluid" />
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+        <br>
 
-        <hr>
-
-        <div class="col-md-12">
-            <div class="annotation-selection box p-2 mb-3">
-                <h5 class="mb-2">Select Annotation/Cluster To Display Table</h5>
-                <form id="annotation-form" data-ajax-url="{{ url_for('make_table') }}" method="POST">
-                    {{ annotationform.hidden_tag() }}
-                    <div class="annotation-enter">
-                        {{ annotationform.annotation.label }}
-                        {{ annotationform.annotation(class='annotation-control form-control form-control-sm') }}
-                    </div>
-                    <div>
-                        {{ annotationform.submit(class='btn btn-sm btn-primary') }}
-                    </div>
-                </form>
-            </div> <!-- End of annotation selection -->
-            <div class="table-container">
-                <table id="annotation-table" class="display" data-ajax-url="{{ url_for('table_data') }}">
-                    <thead>
-                        <tr>
-                            <th>gene</th>
-                            <th>avg_log2FC</th>
-                            <th>pct1</th>
-                            <th>pct2</th>
-                            <th>p_val_adj</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Data will be dynamically loaded here -->
-                    </tbody>
-                </table>
-            </div>
-        </div> <!-- End of column -->
+        <!-- Logout Button -->
+        <form action="{{ url_for('logout') }}" method="GET" style="display: inline;">
+            <button type="submit" class="btn btn-danger btn-sm">Logout</button>
+        </form>
 
     </div> <!-- End of container -->
 
-    <br>
-
-    <!-- Logout Button -->
-    <form action="{{ url_for('logout') }}" method="GET" style="display: inline;">
-        <button type="submit" class="btn btn-danger btn-sm">Logout</button> <!-- Smaller button -->
-    </form>
-
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
+

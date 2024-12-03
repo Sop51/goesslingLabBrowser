@@ -6,54 +6,41 @@ function showSpinner() {
     spinner.style.display = 'inline-block';
     uploadButton.style.display = 'none';
 }
+
 $(document).ready(function() {
-    var ajaxUrl = $('#annotation-table').data('ajax-url');
-    var dataTable = $('#annotation-table').DataTable({
-        "ajax": {
-            "url": ajaxUrl,
-            "dataSrc": ""
-        },
-        "scrollY": "75vh",
-        "scrollCollapse": true,
-        "paging": true,
-        "searching": true,
-        "lengthMenu": [10, 25, 50, 100],
-        "pageLength": 50,
-        "columns": [
-            { "data": "gene" },
-            { "data": "avg_log2FC" },
-            { "data": "pct1" },
-            { "data": "pct2" },
-            { "data": "p_val_adj" }
-        ],
-        "autoWidth": false, // Disable auto column width
-        "columnDefs": [
-        { "width": "20%", "targets": [0, 1, 2, 3, 4] }
-    ]
-    });
+    // Initially hide the table until the necessary data is ready
+    $('#annotation-table').hide();
 
-    // Handle form submission
-    $('#annotation-form').on('submit', function(e) {
-        e.preventDefault();  // Prevent default form submission
-        console.log("Form submitted");  // Log form submission
-
-        $.ajax({
-            url: $('#annotation-form').data('ajax-url'),  // Use the form's action URL
-            type: 'POST',  // Assuming the form is submitting data via POST
-            data: $(this).serialize(),
-            success: function(response) {
-                console.log("Form submitted successfully. Response:", response);
-
-                // After the form submission, fetch the table data
-                fetchTableData();
-            },
-            error: function(xhr) {
-                alert('Error: ' + xhr.responseText);
-            }
+    // Function to initialize the DataTable
+    function initializeTable(data) {
+        $('#annotation-table').show();
+        // Initialize the DataTable after data is fetched
+        var dataTable = $('#annotation-table').DataTable({
+            "data": data,  // Load the data directly into the table
+            "scrollY": "75vh",
+            "scrollCollapse": true,
+            "paging": true,
+            "searching": true,
+            "lengthMenu": [10, 25, 50, 100],
+            "pageLength": 50,
+            "columns": [
+                { "data": "gene" },
+                { "data": "avg_log2FC" },
+                { "data": "pct1" },
+                { "data": "pct2" },
+                { "data": "p_val_adj" }
+            ],
+            "autoWidth": false, // Disable auto column width
+            "columnDefs": [
+                { "width": "20%", "targets": [0, 1, 2, 3, 4] }
+            ]
         });
-    });
 
-    // Function to fetch table data
+        // Show the table now that it is ready
+        dataTable.draw();
+    }
+
+    // Fetch table data after the form is submitted
     function fetchTableData() {
         $.ajax({
             url: $('#annotation-table').data('ajax-url'),  // Data URL from the table
@@ -61,7 +48,10 @@ $(document).ready(function() {
             success: function(data) {
                 console.log("Table data received:", data);  // Ensure the data is logged correctly
                 if (Array.isArray(data)) {
-                    dataTable.clear().rows.add(data).draw();
+                    // Initialize table after fetching data and making it visible
+                    setTimeout(function() {
+                        initializeTable(data);  // Initialize the table after a slight delay
+                    }, 50);  // Small delay to ensure table is visible
                 } else {
                     console.error("Invalid data format:", data);  // More detailed error
                 }
@@ -72,10 +62,30 @@ $(document).ready(function() {
             }
         });
     }
+
+    // Handle form submission
+    $('#annotation-form').on('submit', function(e) {
+        e.preventDefault();  // Prevent default form submission
+        var $submitButton = $(this).find('button[type="submit"]');
+        $submitButton.prop('disabled', true);  // Disable submit button to prevent multiple submits
+
+        $.ajax({
+            url: $('#annotation-form').data('ajax-url'),  // Use the form's action URL
+            type: 'POST',  // Assuming the form is submitting data via POST
+            data: $(this).serialize(),
+            success: function(response) {
+                console.log("Form submitted successfully. Response:", response);
+                // After the form submission, fetch the table data
+                fetchTableData();
+                $submitButton.prop('disabled', false);  // Enable submit button again
+            },
+            error: function(xhr) {
+                alert('Error: ' + xhr.responseText);
+                $submitButton.prop('disabled', false);  // Enable submit button in case of error
+            }
+        });
+    });
 });
-
-
-
 
 
 // Handle gene plot submission
@@ -98,7 +108,11 @@ $('#gene-form').on('submit', function(e) {
             }
         },
         error: function(xhr) {
-            alert('Error: ' + xhr.responseText);
+            if (xhr.status === 404) {
+                alert("Gene not found. Please try a different gene.");
+            } else {
+                alert('An error occurred: ' + xhr.responseText);
+            }
         }
     });
 });
@@ -129,4 +143,7 @@ $('#group-form').on('submit', function(e) {
     });
 });
 
-
+window.addEventListener('beforeunload', function(event) {
+    // Send a POST request to logout the user when the tab or page is closed
+    navigator.sendBeacon('/logout', JSON.stringify({logout: true}));
+});

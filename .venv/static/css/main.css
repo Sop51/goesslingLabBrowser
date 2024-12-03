@@ -133,6 +133,7 @@ input[type="submit"]:hover, button[type="submit"]:hover {
 .table-container {
     width: 100%; /* Take up the full width of the parent container */
     margin-bottom: 20px; /* Optional: Add space below the table */
+    height: 75vh;
 }
 
 /* Table adjustments */
@@ -148,8 +149,16 @@ input[type="submit"]:hover, button[type="submit"]:hover {
     border-bottom: 2px solid #dcdcdc;
 }
 
-#annotation-table th, #annotation-table td {
+#annotation-table th{
     padding: 10px;
+    visibility: visible;
+    text-align: left;
+    border-bottom: 1px solid #eaeaea;
+}
+
+#annotation-table td {
+    padding: 10px;
+    visibility: visible;
     text-align: left;
     border-bottom: 1px solid #eaeaea;
 }
