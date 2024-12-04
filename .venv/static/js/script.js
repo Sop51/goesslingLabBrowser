@@ -143,6 +143,85 @@ $('#group-form').on('submit', function(e) {
     });
 });
 
+// handle group subcluster plot submission
+$('#celltype-subcluster-form').on('submit', function(e) {
+    e.preventDefault();  // Prevent the default form submission
+
+    // Retrieve the AJAX URL from the data attribute
+    var ajaxUrl = $('#celltype-plot-subcluster-url').data('ajax-url');
+
+    $.ajax({
+        url: ajaxUrl,  // Use the variable defined above
+        type: 'POST',
+        data: $(this).serialize(),
+        success: function(response) {
+            // Check if response contains error
+            if (response.error) {
+                alert('Error: ' + response.error);
+            } else {
+                $('#celltype-plot-subcluster-container').html('<img src="' + response.group_subcluster_plot + '" alt="Group UMAP Plot" class="img-fluid">');
+            }
+        },
+        error: function(xhr) {
+            alert('Error: ' + xhr.responseText);
+        }
+    });
+});
+
+// handle gene subcluster plot submission
+$('#gene-subcluster-form').on('submit', function(e) {
+    e.preventDefault();  // Prevent the default form submission
+
+    // Retrieve the AJAX URL from the data attribute
+    var ajaxUrl = $('#gene-plot-subcluster-url').data('ajax-url');
+
+    $.ajax({
+        url: ajaxUrl,  // Use the variable defined above
+        type: 'POST',
+        data: $(this).serialize(),
+        success: function(response) {
+            // Check if response contains error
+            if (response.error) {
+                alert('Error: ' + response.error);
+            } else {
+                $('#gene-plot-subcluster-container').html('<img src="' + response.gene_subcluster_plot + '" alt="Gene UMAP Plot" class="img-fluid">');
+            }
+        },
+        error: function(xhr) {
+            if (xhr.status === 404) {
+                alert("Gene not found. Please try a different gene.");
+            } else {
+                alert('An error occurred: ' + xhr.responseText);
+            }
+        }
+    });
+});
+
+// handle timepoint subcluster plot submission
+$('#timepoint-form').on('submit', function(e) {
+    e.preventDefault();  // Prevent the default form submission
+
+    // Retrieve the AJAX URL from the data attribute
+    var ajaxUrl = $('#timepoint-plot-subcluster-url').data('ajax-url');
+
+    $.ajax({
+        url: ajaxUrl,  // Use the variable defined above
+        type: 'POST',
+        data: $(this).serialize(),
+        success: function(response) {
+            // Check if response contains error
+            if (response.error) {
+                alert('Error: ' + response.error);
+            } else {
+                $('#timepoint-plot-container').html('<img src="' + response.timepoint_plot + '" alt="Group UMAP Plot" class="img-fluid">');
+            }
+        },
+        error: function(xhr) {
+            alert('Error: ' + xhr.responseText);
+        }
+    });
+});
+
 window.addEventListener('beforeunload', function(event) {
     // Send a POST request to logout the user when the tab or page is closed
     navigator.sendBeacon('/logout', JSON.stringify({logout: true}));

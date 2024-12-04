@@ -165,13 +165,77 @@
             <!-- Tab 2 (New Content) -->
             <div class="tab-pane fade" id="new-content" role="tabpanel" aria-labelledby="new-content-tab">
                 <h4>Page to look within the existing clusters</h4>
-                <!-- Example: -->
-                <div class="new-content-box">
-                    <h5>New Content Section</h5>
-                    <p>More new data or features can go here.</p>
+
+                <div class="three-columns-container">
+                    <!-- Celltype and Subcluster Plot -->
+                    <div class="column group-selection" id="celltype-subcluster-section">
+                        <h5 class="mb-2">Select Cell Type</h5>
+                        <form id="celltype-subcluster-form" class="groupsubplotform" enctype="multipart/form-data">
+                            {{ groupsubplotform.hidden_tag() }}
+                            <div class="form-group-subcluster">
+                                {{ groupsubplotform.group.label }}
+                                {{ groupsubplotform.group(class='form-control form-control-sm') }}
+                            </div>
+                            <div>
+                                {{ groupsubplotform.submit(class='btn btn-sm btn-primary') }}
+                            </div>
+                        </form>
+                        <div class="plot-container" id="celltype-plot-subcluster-container">
+                            {% if group_subcluster_plot %}
+                                <img src="{{ group_subcluster_plot }}" alt="UMAP Plot" class="img-fluid" />
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Gene Selection and Plot -->
+                    <div class="column gene-selection" id="gene-subcluster-section">
+                        <h5 class="mb-2">Select Gene</h5>
+                        <form id="gene-subcluster-form" class="genesubplotform" enctype="multipart/form-data">
+                            {{ genesubplotform.hidden_tag() }}
+                            <div class="form-gene-subcluster">
+                                {{ genesubplotform.gene.label }}
+                                {{ genesubplotform.gene(class='form-control form-control-sm', size=20, placeholder='Enter a gene name') }}
+                            </div>
+                            <div>
+                                {{ genesubplotform.submit(class='btn btn-sm btn-primary') }}
+                            </div>
+                        </form>
+                        <div class="plot-container" id="gene-plot-subcluster-container">
+                            {% if gene_subcluster_plot %}
+                                <img src="{{ gene_subcluster_plot }}" alt="UMAP Plot" class="img-fluid" />
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Timepoint Selection and Plot -->
+                    <div class="column timepoint-selection" id="timepoint-section">
+                        <h5 class="mb-2">Display Timepoint Information</h5>
+                        <form id="timepoint-form" class="timepointform" enctype="multipart/form-data">
+                            {{ timepointform.csrf_token }}
+                            <div class="form-group">
+                                {{ timepointform.timepoint.label(class="form-label") }}
+                                <div class="radio-group">
+                                    {% for subfield in timepointform.timepoint %}
+                                        <label class="radio-label">
+                                            {{ subfield(class="form-check-input") }}
+                                            {{ subfield.label.text }}
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div>
+                                {{ timepointform.submit(class='btn btn-sm btn-primary') }}
+                            </div>
+                        </form>
+                        <div class="plot-container" id="timepoint-plot-container">
+                            {% if timepoint_plot %}
+                                <img src="{{ timepoint_plot }}" alt="UMAP Plot" class="img-fluid" />
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+
 
         <br>
 

@@ -1,6 +1,6 @@
 from importlib.metadata import metadata
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from forms import GeneForm, GroupForm, UploadFileForm, LoginForm, AnnotationForm
+from forms import GeneForm, GroupForm, UploadFileForm, LoginForm, AnnotationForm, GroupSubplotForm, GeneSubplotForm, TimepointForm
 import os
 from dotenv import load_dotenv
 import io
@@ -41,7 +41,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 seurat_obj = None
 
 # define a function to plot the gene UMAP
-def plot_gene_umap(gene, file):
+def plot_gene_umap(gene):
     pandas2ri.activate()
     # Load the required libraries in R
     ro.r('library(Seurat)')
@@ -73,7 +73,7 @@ def plot_gene_umap(gene, file):
     return f"data:image/png;base64,{plot_url}"
 
 # define a function to plot the group umap
-def plot_group_umap(group, file):
+def plot_group_umap(group):
     pandas2ri.activate()
     # load the Seurat library in R
     ro.r('library(Seurat)')
@@ -107,7 +107,7 @@ def plot_group_umap(group, file):
     return f"data:image/png;base64,{plot_url}"
 
 # define a function to generate the differential expression table based on the annotation
-def generate_table(annotation, file):
+def generate_table(annotation):
     pandas2ri.activate()
     # load the required seurat library
     ro.r('library(Seurat)')
@@ -131,7 +131,7 @@ def generate_table(annotation, file):
     return markers_df
 
 # define a function to generate the plot for timepoint
-def timepoint_plot(cell_type, subGroup):
+def timepoint_plot(cell_type):
     pandas2ri.activate()
     # load the seurat library
     ro.r('library(Seurat)')
@@ -172,6 +172,62 @@ def sub_cluster_plot(cell_type):
     global seurat_obj
     # subset the object based on the selected cell type
     ro.r(f'sub_cluster <- subset(seurat_obj, idents = c({cell_type}))')
+    # dynamically get the subcluster group
+    ro.r(f'subcluster_col <- paste0("{cell_type}", "_subcluster"')
+    # create the plot
+    ro.r(f'cluster_plot <- DimPlot(sub_cluster, reduction = "umap", group.by = subcluster_col, label = TRUE)')
+    # create a temporary file to save the plot
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+        temp_filename = temp_file.name
+        # use the file name to create the plot
+        ro.r(f'png("{temp_filename}", width = 800, height = 800, res = 150)')
+        # print the plot to the device
+        ro.r('print(cluster_plot)')
+        # finalize the plot
+        ro.r('dev.off()')
+    # read the plot file and convert to base64
+    with open(temp_filename, "rb") as img_file:
+        img_data = img_file.read()
+        plot_url = base64.b64encode(img_data).decode('utf-8')
+    # remove the temporary file after processing
+    os.remove(temp_filename)
+    # return the plot as a base64-encoded string to embed in HTML
+    return f"data:image/png;base64,{plot_url}"
+
+# create a function to make the gene plot
+def gene_plot_subcluster(gene, cell_type):
+    pandas2ri.activate()
+    # import the r libraries
+    ro.r('library(Seurat)')
+    ro.r('library(SeuratDisk)')
+    ro.r('library(ggplot2)')
+    # import the global seurat obj
+    global seurat_obj
+    # subset the object based on the selected cell type
+    ro.r(f'sub_cluster <- subset(seurat_obj, idents = c({cell_type}))')
+    # check if the selected gene exists
+    gene_check = ro.r(f'"{gene}" %in% rownames(sub_cluster)')
+    if not gene_check[0]:
+        return None # return nothing if no
+    # create the plot
+    ro.r(f'gene_plot <- FeaturePlot(seurat_obj, features = "{gene}", order=TRUE, min.cutoff = "q10", repel = TRUE)')
+    # create a temporary file to save the plot
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+        temp_filename = temp_file.name
+        # use the file name to create the plot
+        ro.r(f'png("{temp_filename}", width = 800, height = 800, res = 150)')
+        # print the plot to the device
+        ro.r('print(gene_plot)')
+        # finalize the plot
+        ro.r('dev.off()')
+        # read the plot file and convert to base64
+    with open(temp_filename, "rb") as img_file:
+        img_data = img_file.read()
+        plot_url = base64.b64encode(img_data).decode('utf-8')
+        # remove the temporary file after processing
+    os.remove(temp_filename)
+    # return the plot as a base64-encoded string to embed in HTML
+    return f"data:image/png;base64,{plot_url}"
 
 
 # create the login route
@@ -209,6 +265,9 @@ def home():
     annotationform = AnnotationForm()
     groupform = GroupForm()
     geneform = GeneForm()
+    groupsubplotform = GroupSubplotForm()
+    genesubplotform = GeneSubplotForm()
+    timepointform = TimepointForm()
     # list existing files in the uploads directory
     existing_files = os.listdir(app.config['UPLOAD_FILES_DEST'])
     # new file being uploaded
@@ -230,6 +289,7 @@ def home():
             # set empty list to store col names
             metadata_columns = []
             annotcols = []
+            celltypecols = []
             # get the col names for the umap plot
             with localconverter(pandas2ri.converter):
                 meta_data_cols = ro.r(f'colnames(seurat_obj@meta.data)')
@@ -238,9 +298,14 @@ def home():
             with localconverter(pandas2ri.converter):
                 unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
                 annotcols = [str(val) for val in unique_values]
+            # get the cols for the cell types
+            with localconverter(pandas2ri.converter):
+                unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
+                celltypecols = [str(val) for val in unique_values]
             # save the values in the session
             session['ann_cols'] = annotcols
             session['obs_columns'] = metadata_columns
+            session['celltype_cols'] = celltypecols
             return redirect(url_for('home'))  # redirect to avoid resubmission
         # handle case where wanted file already exists
         if 'existing_file' in request.form:
@@ -259,6 +324,7 @@ def home():
                 # set lists to store the col names
                 metadata_columns = []
                 annotcols = []
+                celltypecols = []
                 # get the col names for the umap plot
                 with localconverter(pandas2ri.converter):
                     meta_data_cols = ro.r(f'colnames(seurat_obj@meta.data)')
@@ -267,19 +333,29 @@ def home():
                 with localconverter(pandas2ri.converter):
                     unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
                     annotcols = [str(val) for val in unique_values]
+                # get the cols for the cell types
+                with localconverter(pandas2ri.converter):
+                    unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
+                    celltypecols = [str(val) for val in unique_values]
                 # save the cols to the sessions
                 session['ann_cols'] = annotcols
                 session['obs_columns'] = metadata_columns
+                session['celltype_cols'] = celltypecols
                 return redirect(url_for('home'))
 
     # populate group and annotation forms based on session-stored names
     if 'obs_columns' in session:
-         groupform.group.choices = [(col, col) for col in session['obs_columns']]
+        groupform.group.choices = [(col, col) for col in session['obs_columns']]
     if 'ann_cols' in session:
-          annotationform.annotation.choices = [(annotation, annotation) for annotation in session['ann_cols']]
+        annotationform.annotation.choices = [(annotation, annotation) for annotation in session['ann_cols']]
+    # populate the cell type forms as well
+    if 'celltype_cols' in session:
+        groupsubplotform.group.choices = [(col, col) for col in session['celltype_cols']]
+
 
     return render_template('index.html', fileform=fileform, annotationform=annotationform, groupform=groupform,
-                           geneform=geneform, existing_files=existing_files)
+                           geneform=geneform, existing_files=existing_files, groupsubplotform=groupsubplotform, genesubplotform=genesubplotform,
+                           timepointform=timepointform)
 
 @app.route('/plot_gene', methods=['POST'])
 def plot_gene():
@@ -302,7 +378,7 @@ def plot_gene():
     if geneform.validate_on_submit():
         gene_of_interest = geneform.gene.data
         session['gene_of_interest'] = gene_of_interest
-        gene_plot = plot_gene_umap(gene_of_interest, session['filepath'])
+        gene_plot = plot_gene_umap(gene_of_interest)
 
         if gene_plot is None:
             # If gene is not found, flash an error message
@@ -338,7 +414,7 @@ def plot_group():
     if groupform.validate_on_submit():
         selected_group = groupform.group.data
         session['selected_group'] = selected_group
-        group_plot = plot_group_umap(selected_group, session['filepath'])
+        group_plot = plot_group_umap(selected_group)
 
         # Return JSON response
         return jsonify(group_plot=group_plot)
@@ -374,13 +450,51 @@ def table_data():
 
     if annotation and filepath:
         # generate table data based on the annotation
-        table_data = generate_table(annotation, filepath)
+        table_data = generate_table(annotation)
         # convert df to list of dictionaries for JSON response
         json_data = table_data.to_dict(orient='records')
         # save the current table to the session
         return jsonify(json_data)
     else:
         return jsonify([])  # return an empty JSON response if no data
+
+# define a route for the group plot
+@app.route('/plot_group_subcluster', methods=['POST'])
+def plot_group_subcluster():
+    groupsubplotform = GroupSubplotForm()
+
+    if groupsubplotform.validate_on_submit():
+        selected_group = groupsubplotform.group.data
+        session['selected_celltype'] = selected_group
+        group_subcluster_plot = sub_cluster_plot(selected_group)
+
+        return jsonify(group_subcluster_plot=group_subcluster_plot)
+    return jsonify(error="Invalid form submission"), 400
+
+@app.route('/plot_gene_subcluster', methods=['POST'])
+def plot_gene_subcluster():
+    genesubplotform = GeneSubplotForm()
+
+    if genesubplotform.validate_on_submit():
+        gene_of_interest = genesubplotform.gene.data
+        session['gene_of_interest_subcluster'] = gene_of_interest
+        gene_subcluster_plot = gene_plot_subcluster(gene_of_interest, session['selected_celltype'])
+        return jsonify(gene_subcluster_plot=gene_subcluster_plot)
+    return jsonify(error="Invalid form submission"), 400
+
+@app.route('/plot_timepoint_subcluster', methods=['POST'])
+def plot_timepoint_subcluster():
+    timepointform = TimepointForm()
+
+    if timepointform.validate_on_submit():
+        response = timepointform.timepoint.data
+        if response == 'Yes' or response == 'yes':
+            timepoint_plot = timepoint_plot(session['selected_celltype'])
+            return jsonify(timepoint_plot=timepoint_plot)
+        else:
+            timepoint_plot = None
+            return jsonify(timepoint_plot=timepoint_plot)
+    return jsonify(error="Invalid form submission"), 400
 
 # define the logout route
 @app.route('/logout')
