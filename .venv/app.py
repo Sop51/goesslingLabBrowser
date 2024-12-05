@@ -178,14 +178,30 @@ def sub_cluster_plot(cell_type):
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
-    # load in the global seurat obj
-    global seurat_obj
-    # subset the object based on the selected cell type
-    ro.r(f'sub_cluster <- subset(seurat_obj, idents = c({cell_type}))')
-    # dynamically get the subcluster group
-    ro.r(f'subcluster_col <- paste0("{cell_type}", "_subcluster"')
+    # read in the global variables
+    global Hepatocyte
+    global Biliary_Epithelial_Cell
+    global Endothelial_Cell
+    global Fibroblast
+    global Macrophage
+    global Monocyte
+    global Erythrocyte
+    global Neuron
+    # get the file name for the selected cell type
+    ro.r(f'temp_name <- gsub("\\s+", "", "{cell_type}")')
+    ro.r(f'file_name <- paste0(temp_name, "SubCluster.h5Seurat"')
+    # read in the file
+    ro.r(f'subcluster_obj <- Loadh5Seurat(file_name)')
+    # get the cell type in the right format to match the global var
+    global_cell_type_to_match = re.sub(r"\s+", "_", cell_type)
+    # save to a global variable
+    if global_cell_type_to_match in globals():
+        globals()[global_cell_type_to_match] = subcluster_obj
+    # get the cell type in the right format to retrieve the appropriate group by var
+    ro.r(f'temp_celltype <- gsub(" ", "_", "{cell_type}")')
+    ro.r(f'final_celltype <- <- paste0(temp_celltype, "_subcluster")')
     # create the plot
-    ro.r(f'cluster_plot <- DimPlot(sub_cluster, reduction = "umap", group.by = subcluster_col, label = TRUE)')
+    ro.r(f'cluster_plot <- DimPlot(sub_cluster_obj, reduction = "umap", group.by = final_celltype, label = TRUE)')
     # create a temporary file to save the plot
     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
         temp_filename = temp_file.name
