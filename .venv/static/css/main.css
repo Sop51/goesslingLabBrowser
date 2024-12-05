@@ -1,8 +1,8 @@
 /* General Body Styling */
 body {
-    font-family: 'Source Sans Pro', sans-serif; /* Clean, modern font */
-    background-color: #f0f0f0; /* Light neutral background */
-    color: #4a4a4a; /* Softer dark gray for text */
+    font-family: 'Source Sans Pro', sans-serif;
+    background-color: #f0f0f0;
+    color: #4a4a4a;
     text-align: center;
     margin: 0;
     padding: 50px;
@@ -11,7 +11,7 @@ body {
 
 /* Titles */
 h1, h5 {
-    color: #2c3e50; /* Darker slate color for contrast */
+    color: #2c3e50;
     font-weight: 600;
     letter-spacing: 0.5px;
 }
@@ -35,7 +35,7 @@ img {
     padding: 10px;
     margin: 20px auto;
     color: #fff;
-    background-color: #95a5a6; /* Muted neutral gray */
+    background-color: #95a5a6;
     border-radius: 8px;
     max-width: 400px;
 }
@@ -129,21 +129,27 @@ input[type="submit"]:hover, button[type="submit"]:hover {
     text-align: center;
 }
 
-/* Table container without fixed height */
+.plot-container img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+
+/* Annotation Table styling  */
 .table-container {
-    width: 100%; /* Take up the full width of the parent container */
-    margin-bottom: 20px; /* Optional: Add space below the table */
+    width: 100%;
+    margin-bottom: 20px;
     height: 75vh;
 }
 
-/* Table adjustments */
 #annotation-table {
-    width: 100% !important; /* Ensure it takes full width of the container */
-    table-layout: auto; /* Allow columns to adjust based on content */
+    width: 100% !important;
+    table-layout: auto;
     border-collapse: collapse;
 }
 
-/* Table header styling */
 #annotation-table thead {
     background-color: #f7f7f7;
     border-bottom: 2px solid #dcdcdc;
@@ -154,6 +160,7 @@ input[type="submit"]:hover, button[type="submit"]:hover {
     visibility: visible;
     text-align: left;
     border-bottom: 1px solid #eaeaea;
+    width: 20%;
 }
 
 #annotation-table td {
@@ -161,22 +168,12 @@ input[type="submit"]:hover, button[type="submit"]:hover {
     visibility: visible;
     text-align: left;
     border-bottom: 1px solid #eaeaea;
+    width: 20%;
 }
 
-/* Optional: Set column widths for uniformity (adjust if needed) */
-#annotation-table th {
-    width: 20%; /* Set each header to take up equal space */
-}
-
-#annotation-table td {
-    width: 20%; /* Same width for table data cells */
-}
-
-/* Remove the table wrapper's horizontal scrolling */
 #annotation-table_wrapper {
     width: 100%;
 }
-
 
 /* Hover Effects */
 .upload-box:hover, .group-selection:hover, .gene-selection:hover, .annotation-selection:hover {
@@ -210,7 +207,7 @@ input[type="submit"]:hover {
     padding: 0 12px; /* Adjust padding for a balanced look */
 }
 
-/* Three Columns Layout */
+/* Three Columns Layout For the Subcluster Tab*/
 .three-columns-container {
     display: flex;
     justify-content: space-between; /* Space between columns */
@@ -229,14 +226,7 @@ input[type="submit"]:hover {
     text-align: center;
 }
 
-/* Ensure Images Scale */
-.plot-container img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 0 auto;
-}
-
+/* Radio Button Styling */
 .radio-group {
     display: flex;
     flex-direction: row; /* Align buttons horizontally */

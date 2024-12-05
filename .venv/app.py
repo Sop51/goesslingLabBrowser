@@ -38,7 +38,17 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # create a global variable to hold the loaded seurat object
+# also global variables for all the sub clusters
 seurat_obj = None
+Hepatocyte = None
+Biliary_Epithelial_Cell = None
+Endothelial_Cell = None
+Hepatic_Stellate_Cell = None
+Fibroblast = None
+Macrophage = None
+Monocyte = None
+Erythrocyte = None
+Neuron = None
 
 # define a function to plot the gene UMAP
 def plot_gene_umap(gene):
@@ -137,7 +147,7 @@ def timepoint_plot(cell_type):
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
-    # load in the serat object
+    # load in the seurat object
     global seurat_obj
     # subset the object based on the selected cell_type
     ro.r(f'sub_cluster <- subset(seurat_obj, idents = c({cell_type}))')

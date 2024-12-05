@@ -1,3 +1,4 @@
+// Spinner function for upload
 function showSpinner() {
     const spinner = document.getElementById('spinner');
     const uploadButton = document.getElementById('uploadButton');
@@ -7,6 +8,7 @@ function showSpinner() {
     uploadButton.style.display = 'none';
 }
 
+// Rendering the annotation table
 $(document).ready(function() {
     // Initially hide the table until the necessary data is ready
     $('#annotation-table').hide();

@@ -31,12 +31,12 @@
     <div class="container mt-3">
         <!-- Tab Navigation -->
         <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <!-- Tab 1 (Existing Content) -->
+            <!-- Tab 1 = overall seurat clusters -->
             <li class="nav-item">
                 <a class="nav-link active" id="upload-tab" data-bs-toggle="tab" href="#upload" role="tab" aria-controls="upload" aria-selected="true">Overall</a>
             </li>
 
-            <!-- Tab 2 (New Content) -->
+            <!-- Tab 2 = seurat subclusters -->
             <li class="nav-item">
                 <a class="nav-link" id="new-content-tab" data-bs-toggle="tab" href="#new-content" role="tab" aria-controls="new-content" aria-selected="false">Cluster Specific</a>
             </li>
@@ -127,6 +127,7 @@
 
                     <hr>
 
+                    <!-- Annotation Table Section -->
                     <div class="col-md-12">
                         <div class="annotation-selection box p-2 mb-3">
                             <h5 class="mb-2">Select Annotation/Cluster To Display Table</h5>
@@ -162,12 +163,13 @@
                 </div>
             </div>
 
-            <!-- Tab 2 (New Content) -->
+            <!-- Tab 2 (Contains Subcluster Information -->
             <div class="tab-pane fade" id="new-content" role="tabpanel" aria-labelledby="new-content-tab">
-                <h4>Page to look within the existing clusters</h4>
+                <h4>Note: this tab is specific to issacs data currently</h4>
+                <h3>Please select a cell type before selecting a gene or displaying timepoint information</h3>
 
                 <div class="three-columns-container">
-                    <!-- Celltype and Subcluster Plot -->
+                    <!-- Celltype Subcluster Plot -->
                     <div class="column group-selection" id="celltype-subcluster-section">
                         <h5 class="mb-2">Select Cell Type</h5>
                         <form id="celltype-subcluster-form" class="groupsubplotform" enctype="multipart/form-data">
@@ -187,7 +189,7 @@
                         </div>
                     </div>
 
-                    <!-- Gene Selection and Plot -->
+                    <!-- Gene Selection and Subcluster Plot -->
                     <div class="column gene-selection" id="gene-subcluster-section">
                         <h5 class="mb-2">Select Gene</h5>
                         <form id="gene-subcluster-form" class="genesubplotform" enctype="multipart/form-data">
@@ -207,7 +209,7 @@
                         </div>
                     </div>
 
-                    <!-- Timepoint Selection and Plot -->
+                    <!-- Timepoint Selection and Subcluster Plot -->
                     <div class="column timepoint-selection" id="timepoint-section">
                         <h5 class="mb-2">Display Timepoint Information</h5>
                         <form id="timepoint-form" class="timepointform" enctype="multipart/form-data">
