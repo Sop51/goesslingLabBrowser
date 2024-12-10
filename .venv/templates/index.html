@@ -168,24 +168,26 @@
                 <h4>Note: this tab is specific to issacs data currently</h4>
                 <h5>Please select a cell type before selecting a gene or displaying timepoint information</h5>
 
-                <div class="three-columns-container">
+                <div class="three-columns-container" style="display: flex; gap: 20px;">
                     <!-- Celltype Subcluster Plot -->
                     <div class="column group-selection" id="celltype-subcluster-section">
-                        <h5 class="mb-2">Select Cell Type</h5>
-                        <form id="celltype-subcluster-form" class="groupsubplotform" enctype="multipart/form-data">
-                            {{ groupsubplotform.hidden_tag() }}
-                            <div class="form-group-subcluster">
-                                {{ groupsubplotform.group.label }}
-                                {{ groupsubplotform.group(class='form-control form-control-sm') }}
+                        <div id="celltype-plot-subcluster-url" data-ajax-url="{{ url_for('plot_group_subcluster') }}">
+                                <h5 class="mb-2">Select Cell Type</h5>
+                                <form id="celltype-subcluster-form" class="groupSubplotForm" enctype="multipart/form-data">
+                                    {{ groupsubplotform.hidden_tag() }}
+                                    <div class="form-group-subcluster">
+                                        {{ groupsubplotform.group.label }}
+                                        {{ groupsubplotform.group(class='form-control form-control-sm') }}
+                                    </div>
+                                    <div>
+                                        {{ groupsubplotform.submit(class='btn btn-sm btn-primary') }}
+                                    </div>
+                                </form>
+                            <div class="plot-container" id="celltype-plot-subcluster-container">
+                                {% if group_subcluster_plot %}
+                                    <img src="{{ group_subcluster_plot }}" alt="UMAP Plot" class="img-fluid" />
+                                {% endif %}
                             </div>
-                            <div>
-                                {{ groupsubplotform.submit(class='btn btn-sm btn-primary') }}
-                            </div>
-                        </form>
-                        <div class="plot-container" id="celltype-plot-subcluster-container">
-                            {% if group_subcluster_plot %}
-                                <img src="{{ group_subcluster_plot }}" alt="UMAP Plot" class="img-fluid" />
-                            {% endif %}
                         </div>
                     </div>
 

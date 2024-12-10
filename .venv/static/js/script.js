@@ -145,10 +145,12 @@ $('#group-form').on('submit', function(e) {
     });
 });
 
+
 // handle group subcluster plot submission
 $('#celltype-subcluster-form').on('submit', function(e) {
+    console.log($('#celltype-plot-subcluster-url').data('ajax-url'));
     e.preventDefault();  // Prevent the default form submission
-
+    console.log("Form submitted!")
     // Retrieve the AJAX URL from the data attribute
     var ajaxUrl = $('#celltype-plot-subcluster-url').data('ajax-url');
 
@@ -170,34 +172,30 @@ $('#celltype-subcluster-form').on('submit', function(e) {
     });
 });
 
-// handle gene subcluster plot submission
-$('#gene-subcluster-form').on('submit', function(e) {
-    e.preventDefault();  // Prevent the default form submission
-
-    // Retrieve the AJAX URL from the data attribute
-    var ajaxUrl = $('#gene-plot-subcluster-url').data('ajax-url');
-
+$(document).on('submit', '#celltype-subcluster-form', function(e) {
+    console.log($('#celltype-plot-subcluster-url').data('ajax-url'));
+    e.preventDefault();
+    console.log("Form submitted!");
+    
+    var ajaxUrl = $('#celltype-plot-subcluster-url').data('ajax-url');
     $.ajax({
-        url: ajaxUrl,  // Use the variable defined above
+        url: ajaxUrl,
         type: 'POST',
         data: $(this).serialize(),
         success: function(response) {
-            // Check if response contains error
             if (response.error) {
                 alert('Error: ' + response.error);
             } else {
-                $('#gene-plot-subcluster-container').html('<img src="' + response.gene_subcluster_plot + '" alt="Gene UMAP Plot" class="img-fluid">');
+                console.log(response.group_subcluster_plot);
+                $('#celltype-plot-subcluster-container').html('<img src="' + response.group_subcluster_plot + '" alt="Group UMAP Plot" class="img-fluid">');
             }
         },
         error: function(xhr) {
-            if (xhr.status === 404) {
-                alert("Gene not found. Please try a different gene.");
-            } else {
-                alert('An error occurred: ' + xhr.responseText);
-            }
+            alert('Error: ' + xhr.responseText);
         }
     });
 });
+
 
 // handle timepoint subcluster plot submission
 $('#timepoint-form').on('submit', function(e) {

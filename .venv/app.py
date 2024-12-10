@@ -33,6 +33,9 @@ PASSWORD = os.getenv('PASSWORD')
 UPLOAD_FOLDER = 'uploads/'
 app.config['UPLOAD_FILES_DEST'] = UPLOAD_FOLDER
 
+DATA_FOLDER = 'subclusterData/'
+app.config['DATA_FILES_DEST'] = DATA_FOLDER
+
 # create upload folder if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -151,7 +154,6 @@ def timepoint_plot(cell_type):
     global seurat_obj
     # subset the object based on the selected cell_type
     ro.r(f'sub_cluster <- subset(seurat_obj, idents = c({cell_type}))')
-    # create the plot
     ro.r(f'timepoint_plot <- DimPlot(sub_cluster, reduction = "umap", group.by = "timepoint", label = TRUE, label.size = 5, repel = TRUE)")')
     # create a temporary file to save the plot
     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
@@ -178,6 +180,10 @@ def sub_cluster_plot(cell_type):
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
+
+    # clear any subcluster_obj from the environment to prevent conflicts
+    ro.r('if (exists("subcluster_obj")) rm(subcluster_obj, envir = .GlobalEnv)')
+
     # read in the global variables
     global Hepatocyte
     global Biliary_Epithelial_Cell
@@ -187,21 +193,37 @@ def sub_cluster_plot(cell_type):
     global Monocyte
     global Erythrocyte
     global Neuron
-    # get the file name for the selected cell type
-    ro.r(f'temp_name <- gsub("\\s+", "", "{cell_type}")')
-    ro.r(f'file_name <- paste0(temp_name, "SubCluster.h5Seurat"')
-    # read in the file
-    ro.r(f'subcluster_obj <- Loadh5Seurat(file_name)')
-    # get the cell type in the right format to match the global var
-    global_cell_type_to_match = re.sub(r"\s+", "_", cell_type)
-    # save to a global variable
-    if global_cell_type_to_match in globals():
-        globals()[global_cell_type_to_match] = subcluster_obj
+    # format the cell type correctly
+    cell_type = cell_type.strip()  
+
+    # get the global variable name corresponding to the subtype
+    global_cell_type_name = re.sub(r"\s+", "_", cell_type)
+
+    # check if the global variable already exists as a seurat obj (has already been loaded)
+    if global_cell_type_name in globals() and globals()[global_cell_type_name] is not None:
+        # if yes, get the object
+        subcluster_obj = globals()[global_cell_type_name]
+        # assign as a variable in R
+        ro.globalenv['subcluster_obj'] = subcluster_obj
+    else:
+        # get the file name for the selected cell type
+        data_folder = "subclusterData/"
+        temp_name = cell_type.replace(" ", "")  # ensure there are no leading/trailing spaces
+        file_name = f"{temp_name}SubCluster.h5Seurat"
+        # construct the full file path
+        file_path = os.path.abspath(os.path.join(data_folder, file_name))
+        # load in the seurat obj
+        ro.r(f'subcluster_obj <- LoadH5Seurat("{file_path}")')
+        # load the seurat obj into python
+        subcluster_obj = ro.r('subcluster_obj')
+        # store as a global variable
+        globals()[global_cell_type_name] = subcluster_obj
+
     # get the cell type in the right format to retrieve the appropriate group by var
     ro.r(f'temp_celltype <- gsub(" ", "_", "{cell_type}")')
-    ro.r(f'final_celltype <- <- paste0(temp_celltype, "_subcluster")')
+    ro.r(f'final_celltype <- paste0(temp_celltype, "_subcluster")')
     # create the plot
-    ro.r(f'cluster_plot <- DimPlot(sub_cluster_obj, reduction = "umap", group.by = final_celltype, label = TRUE)')
+    ro.r(f'cluster_plot <- DimPlot(subcluster_obj, reduction = "umap", group.by = final_celltype, label = TRUE)')
     # create a temporary file to save the plot
     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
         temp_filename = temp_file.name
@@ -489,12 +511,19 @@ def table_data():
 def plot_group_subcluster():
     groupsubplotform = GroupSubplotForm()
 
+    if 'celltype_cols' in session:
+        groupsubplotform.group.choices = [(col, col) for col in session['celltype_cols']]
+
+    print('group form')
+
     if groupsubplotform.validate_on_submit():
         selected_group = groupsubplotform.group.data
-        session['selected_celltype'] = selected_group
+        print(selected_group)
+        session['selected_celltype'] = selected_group 
         group_subcluster_plot = sub_cluster_plot(selected_group)
 
         return jsonify(group_subcluster_plot=group_subcluster_plot)
+    print(groupsubplotform.errors)
     return jsonify(error="Invalid form submission"), 400
 
 @app.route('/plot_gene_subcluster', methods=['POST'])
@@ -528,7 +557,24 @@ def logout():
     # clear the session and global variables
     session.clear()
     global seurat_obj
+    global Hepatocyte
+    global Biliary_Epithelial_Cell
+    global Endothelial_Cell
+    global Fibroblast
+    global Macrophage
+    global Monocyte
+    global Erythrocyte
+    global Neuron
     seurat_obj = None
+    Hepatocyte = None
+    Biliary_Epithelial_Cell = None
+    Endothelial_Cell = None
+    Hepatic_Stellate_Cell = None
+    Fibroblast = None
+    Macrophage = None
+    Monocyte = None
+    Erythrocyte = None
+    Neuron = None
     return redirect(url_for('login'))
 
 
