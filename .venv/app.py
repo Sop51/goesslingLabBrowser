@@ -1,6 +1,6 @@
 from importlib.metadata import metadata
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from forms import GeneForm, GroupForm, UploadFileForm, LoginForm, AnnotationForm, GroupSubplotForm, GeneSubplotForm, TimepointForm
+from forms import SubClusterForm, GeneForm, GroupForm, UploadFileForm, LoginForm, AnnotationForm, GroupSubplotForm, GeneSubplotForm, TimepointForm
 import os
 from dotenv import load_dotenv
 import io
@@ -143,18 +143,37 @@ def generate_table(annotation):
         print("Markers DataFrame:", markers_df)
     return markers_df
 
+# define a function to generate the differential expression table based on the subcluster
+def generate_subcluster_table(subcluster):
+    pandas2ri.activate()
+    # load the required seurat library
+    ro.r('library(Seurat)')
+    ro.r('library(SeuratDisk)')
+    # r code to extract the markers
+    ro.r(f'''
+    submarkers <- FindMarkers(subcluster_obj, ident.1 = "{subcluster}", group.by = final_celltype)
+    submarkers <- as.data.frame(submarkers)
+    submarkers$gene <- rownames(submarkers)  # Add row names as a new column
+    rownames(submarkers) <- NULL
+    submarkers <- submarkers[, c("gene", "avg_log2FC", "pct.1", "pct.2", "p_val_adj")]
+    ''')
+    # convert result into a pandas dataframe
+    with (ro.default_converter + pandas2ri.converter).context():
+        markers_df = ro.conversion.get_conversion().rpy2py(ro.r('submarkers'))
+        markers_df.columns = markers_df.columns.str.strip()
+        markers_df.columns = ['gene', 'avg_log2FC', 'pct1', 'pct2', 'p_val_adj']
+        print("Markers DataFrame:", markers_df)
+    return markers_df
+
 # define a function to generate the plot for timepoint
-def timepoint_plot(cell_type):
+def timepoint_plot():
     pandas2ri.activate()
     # load the seurat library
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
-    # load in the seurat object
-    global seurat_obj
     # subset the object based on the selected cell_type
-    ro.r(f'sub_cluster <- subset(seurat_obj, idents = c({cell_type}))')
-    ro.r(f'timepoint_plot <- DimPlot(sub_cluster, reduction = "umap", group.by = "timepoint", label = TRUE, label.size = 5, repel = TRUE)")')
+    ro.r(f'timepoint_plot <- DimPlot(subcluster_obj, reduction = "umap", group.by = "timepoint", label = TRUE, label.size = 5, repel = TRUE)')
     # create a temporary file to save the plot
     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
         temp_filename = temp_file.name
@@ -180,10 +199,8 @@ def sub_cluster_plot(cell_type):
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
-
     # clear any subcluster_obj from the environment to prevent conflicts
     ro.r('if (exists("subcluster_obj")) rm(subcluster_obj, envir = .GlobalEnv)')
-
     # read in the global variables
     global Hepatocyte
     global Biliary_Epithelial_Cell
@@ -195,10 +212,8 @@ def sub_cluster_plot(cell_type):
     global Neuron
     # format the cell type correctly
     cell_type = cell_type.strip()  
-
     # get the global variable name corresponding to the subtype
     global_cell_type_name = re.sub(r"\s+", "_", cell_type)
-
     # check if the global variable already exists as a seurat obj (has already been loaded)
     if global_cell_type_name in globals() and globals()[global_cell_type_name] is not None:
         # if yes, get the object
@@ -218,10 +233,12 @@ def sub_cluster_plot(cell_type):
         subcluster_obj = ro.r('subcluster_obj')
         # store as a global variable
         globals()[global_cell_type_name] = subcluster_obj
-
     # get the cell type in the right format to retrieve the appropriate group by var
     ro.r(f'temp_celltype <- gsub(" ", "_", "{cell_type}")')
     ro.r(f'final_celltype <- paste0(temp_celltype, "_subcluster")')
+    # store the subcluster name into a python session obj
+    final_cell_type = ro.r(f'final_celltype')
+    session['final_cell_type'] = final_cell_type[0]
     # create the plot
     ro.r(f'cluster_plot <- DimPlot(subcluster_obj, reduction = "umap", group.by = final_celltype, label = TRUE)')
     # create a temporary file to save the plot
@@ -241,24 +258,20 @@ def sub_cluster_plot(cell_type):
     os.remove(temp_filename)
     # return the plot as a base64-encoded string to embed in HTML
     return f"data:image/png;base64,{plot_url}"
-
+ 
 # create a function to make the gene plot
-def gene_plot_subcluster(gene, cell_type):
+def gene_plot_subcluster(gene):
     pandas2ri.activate()
     # import the r libraries
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
-    # import the global seurat obj
-    global seurat_obj
-    # subset the object based on the selected cell type
-    ro.r(f'sub_cluster <- subset(seurat_obj, idents = c({cell_type}))')
     # check if the selected gene exists
-    gene_check = ro.r(f'"{gene}" %in% rownames(sub_cluster)')
+    gene_check = ro.r(f'"{gene}" %in% rownames(subcluster_obj)')
     if not gene_check[0]:
         return None # return nothing if no
     # create the plot
-    ro.r(f'gene_plot <- FeaturePlot(seurat_obj, features = "{gene}", order=TRUE, min.cutoff = "q10", repel = TRUE)')
+    ro.r(f'gene_plot <- FeaturePlot(subcluster_obj, features = "{gene}", order=TRUE, min.cutoff = "q10", repel = TRUE)')
     # create a temporary file to save the plot
     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
         temp_filename = temp_file.name
@@ -276,7 +289,6 @@ def gene_plot_subcluster(gene, cell_type):
     os.remove(temp_filename)
     # return the plot as a base64-encoded string to embed in HTML
     return f"data:image/png;base64,{plot_url}"
-
 
 # create the login route
 @app.route('/login', methods=['GET', 'POST'])
@@ -316,6 +328,7 @@ def home():
     groupsubplotform = GroupSubplotForm()
     genesubplotform = GeneSubplotForm()
     timepointform = TimepointForm()
+    subclusterform = SubClusterForm()
     # list existing files in the uploads directory
     existing_files = os.listdir(app.config['UPLOAD_FILES_DEST'])
     # new file being uploaded
@@ -350,6 +363,12 @@ def home():
             with localconverter(pandas2ri.converter):
                 unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
                 celltypecols = [str(val) for val in unique_values]
+            if 'final_cell_type' in session and ro.r('exists("subcluster_obj", envir = .GlobalEnv)')[0]:
+                with localconverter(pandas2ri.converter):
+                    unique_values = ro.r(f'levels(subcluster_obj@meta.data[[final_celltype]])')
+                    cluster_cols = [str(val) for val in unique_values]
+                    # store the values in the session
+                    session['subcluster_cols'] = cluster_cols
             # save the values in the session
             session['ann_cols'] = annotcols
             session['obs_columns'] = metadata_columns
@@ -385,6 +404,12 @@ def home():
                 with localconverter(pandas2ri.converter):
                     unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
                     celltypecols = [str(val) for val in unique_values]
+                if 'final_cell_type' in session and ro.r('exists("subcluster_obj", envir = .GlobalEnv)')[0]:
+                    with localconverter(pandas2ri.converter):
+                        unique_values = ro.r(f'levels(subcluster_obj@meta.data[[final_celltype]])')
+                        cluster_cols = [str(val) for val in unique_values]
+                        # store the values in the session
+                        session['subcluster_cols'] = cluster_cols
                 # save the cols to the sessions
                 session['ann_cols'] = annotcols
                 session['obs_columns'] = metadata_columns
@@ -399,11 +424,14 @@ def home():
     # populate the cell type forms as well
     if 'celltype_cols' in session:
         groupsubplotform.group.choices = [(col, col) for col in session['celltype_cols']]
+    # populate the subcluster form
+    if 'subcluster_cols' in session:
+        subclusterform.cluster.choices = [(col, col) for col in session['subcluster_cols']]
 
 
     return render_template('index.html', fileform=fileform, annotationform=annotationform, groupform=groupform,
                            geneform=geneform, existing_files=existing_files, groupsubplotform=groupsubplotform, genesubplotform=genesubplotform,
-                           timepointform=timepointform)
+                           timepointform=timepointform, subclusterform=subclusterform)
 
 @app.route('/plot_gene', methods=['POST'])
 def plot_gene():
@@ -484,6 +512,19 @@ def make_table():
         print("Form validation failed:", annotationform.errors)
         return jsonify({'status': 'error', 'message': 'Form validation failed'}), 400
 
+@app.route('/make_subcluster_table', methods=['POST'])
+def make_subcluster_table():
+    subclusterform = SubClusterForm()
+    if 'subcluster_cols' in session:
+        subclusterform.cluster.choices = [(col, col) for col in session['subcluster_cols']]
+    if subclusterform.validate_on_submit():
+        subcluster = subclusterform.cluster.data
+        session['subcluster'] = subcluster
+        # Instead of redirecting, return a JSON response
+        return jsonify({'status': 'success', 'message': 'Annotation saved'})
+    else:
+        print("Form validation failed:", subclusterform.errors)
+        return jsonify({'status': 'error', 'message': 'Form validation failed'}), 400
 
 @app.route('/api/table_data', methods=['GET'])
 def table_data():
@@ -506,6 +547,24 @@ def table_data():
     else:
         return jsonify([])  # return an empty JSON response if no data
 
+@app.route('/api/subcluster_table_data', methods=['GET'])
+def subcluster_table_data():
+    if not session.get('logged_in'):
+        return jsonify([])
+
+    # get the selected cluster from the session
+    subcluster = session.get('subcluster')
+
+    if subcluster:
+        # generate table data based on the annotation
+        table_data = generate_subcluster_table(subcluster)
+        # convert df to list of dictionaries for JSON response
+        json_data = table_data.to_dict(orient='records')
+        # save the current table to the session
+        return jsonify(json_data)
+    else:
+        return jsonify([])  # return an empty JSON response if no data
+
 # define a route for the group plot
 @app.route('/plot_group_subcluster', methods=['POST'])
 def plot_group_subcluster():
@@ -514,16 +573,20 @@ def plot_group_subcluster():
     if 'celltype_cols' in session:
         groupsubplotform.group.choices = [(col, col) for col in session['celltype_cols']]
 
-    print('group form')
-
     if groupsubplotform.validate_on_submit():
         selected_group = groupsubplotform.group.data
         print(selected_group)
         session['selected_celltype'] = selected_group 
-        group_subcluster_plot = sub_cluster_plot(selected_group)
 
-        return jsonify(group_subcluster_plot=group_subcluster_plot)
-    print(groupsubplotform.errors)
+        cluster_cols = []
+        if ro.r('exists("subcluster_obj", envir = .GlobalEnv)')[0]:
+            with localconverter(pandas2ri.converter):
+                unique_values = ro.r(f'levels(subcluster_obj@meta.data[[final_celltype]])')
+                cluster_cols = [str(val) for val in unique_values]
+                session['subcluster_cols'] = cluster_cols  # Save the columns in the session
+
+        group_subcluster_plot = sub_cluster_plot(selected_group)
+        return jsonify(group_subcluster_plot=group_subcluster_plot, cluster_cols=cluster_cols)
     return jsonify(error="Invalid form submission"), 400
 
 @app.route('/plot_gene_subcluster', methods=['POST'])
@@ -533,7 +596,7 @@ def plot_gene_subcluster():
     if genesubplotform.validate_on_submit():
         gene_of_interest = genesubplotform.gene.data
         session['gene_of_interest_subcluster'] = gene_of_interest
-        gene_subcluster_plot = gene_plot_subcluster(gene_of_interest, session['selected_celltype'])
+        gene_subcluster_plot = gene_plot_subcluster(gene_of_interest)
         return jsonify(gene_subcluster_plot=gene_subcluster_plot)
     return jsonify(error="Invalid form submission"), 400
 
@@ -544,11 +607,11 @@ def plot_timepoint_subcluster():
     if timepointform.validate_on_submit():
         response = timepointform.timepoint.data
         if response == 'Yes' or response == 'yes':
-            timepoint_plot = timepoint_plot(session['selected_celltype'])
-            return jsonify(timepoint_plot=timepoint_plot)
+            t_plot = timepoint_plot()
+            return jsonify(t_plot=t_plot)
         else:
-            timepoint_plot = None
-            return jsonify(timepoint_plot=timepoint_plot)
+            t_plot = None
+            return jsonify(t_plot=t_plot)
     return jsonify(error="Invalid form submission"), 400
 
 # define the logout route

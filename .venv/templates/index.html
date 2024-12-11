@@ -193,52 +193,94 @@
 
                     <!-- Gene Selection and Subcluster Plot -->
                     <div class="column gene-selection" id="gene-subcluster-section">
-                        <h5 class="mb-2">Select Gene</h5>
-                        <form id="gene-subcluster-form" class="genesubplotform" enctype="multipart/form-data">
-                            {{ genesubplotform.hidden_tag() }}
-                            <div class="form-gene-subcluster">
-                                {{ genesubplotform.gene.label }}
-                                {{ genesubplotform.gene(class='form-control form-control-sm', size=20, placeholder='Enter a gene name') }}
+                        <div id="gene-plot-subcluster-url" data-ajax-url="{{ url_for('plot_gene_subcluster') }}">
+                            <h5 class="mb-2">Select Gene</h5>
+                            <form id="gene-subcluster-form" class="genesubplotform" enctype="multipart/form-data">
+                                {{ genesubplotform.hidden_tag() }}
+                                <div class="form-gene-subcluster">
+                                    {{ genesubplotform.gene.label }}
+                                    {{ genesubplotform.gene(class='form-control form-control-sm', size=20, placeholder='Enter a gene name') }}
+                                </div>
+                                <div>
+                                    {{ genesubplotform.submit(class='btn btn-sm btn-primary') }}
+                                </div>
+                            </form>
+                            <div class="plot-container" id="gene-plot-subcluster-container">
+                                {% if gene_subcluster_plot %}
+                                    <img src="{{ gene_subcluster_plot }}" alt="UMAP Plot" class="img-fluid" />
+                                {% endif %}
                             </div>
-                            <div>
-                                {{ genesubplotform.submit(class='btn btn-sm btn-primary') }}
-                            </div>
-                        </form>
-                        <div class="plot-container" id="gene-plot-subcluster-container">
-                            {% if gene_subcluster_plot %}
-                                <img src="{{ gene_subcluster_plot }}" alt="UMAP Plot" class="img-fluid" />
-                            {% endif %}
                         </div>
                     </div>
 
                     <!-- Timepoint Selection and Subcluster Plot -->
                     <div class="column timepoint-selection" id="timepoint-section">
-                        <h5 class="mb-2">Display Timepoint Information</h5>
-                        <form id="timepoint-form" class="timepointform" enctype="multipart/form-data">
-                            {{ timepointform.csrf_token }}
-                            <div class="form-group">
-                                {{ timepointform.timepoint.label(class="form-label") }}
-                                <div class="radio-group">
-                                    {% for subfield in timepointform.timepoint %}
-                                        <label class="radio-label">
-                                            {{ subfield(class="form-check-input") }}
-                                            {{ subfield.label.text }}
-                                        </label>
-                                    {% endfor %}
+                        <div id="timepoint-plot-subcluster-url" data-ajax-url="{{ url_for('plot_timepoint_subcluster') }}">
+                            <h5 class="mb-2">Display Timepoint Information</h5>
+                            <form id="timepoint-form" class="timepointform" enctype="multipart/form-data">
+                                {{ timepointform.csrf_token }}
+                                <div class="form-group">
+                                    {{ timepointform.timepoint.label(class="form-label") }}
+                                    <div class="radio-group">
+                                        {% for subfield in timepointform.timepoint %}
+                                            <label class="radio-label">
+                                                {{ subfield(class="form-check-input") }}
+                                                {{ subfield.label.text }}
+                                            </label>
+                                        {% endfor %}
+                                    </div>
                                 </div>
+                                <div>
+                                    {{ timepointform.submit(class='btn btn-sm btn-primary') }}
+                                </div>
+                            </form>
+                            <div class="plot-container" id="timepoint-plot-container">
+                                {% if timepoint_plot %}
+                                    <img src="{{ t_plot }}" alt="UMAP Plot" class="img-fluid" />
+                                {% endif %}
                             </div>
-                            <div>
-                                {{ timepointform.submit(class='btn btn-sm btn-primary') }}
-                            </div>
-                        </form>
-                        <div class="plot-container" id="timepoint-plot-container">
-                            {% if timepoint_plot %}
-                                <img src="{{ timepoint_plot }}" alt="UMAP Plot" class="img-fluid" />
-                            {% endif %}
                         </div>
                     </div>
                 </div>
+
+
+                <div class="col-md-12">
+                    <div class="annotation-selection box p-2 mb-3">
+                        <h5 class="mb-2">Select Cluster To Display Table</h5>
+                        <form id="cluster-form"
+                            data-ajax-url="{{ url_for('make_subcluster_table') }}"method=POST>
+                            {{ subclusterform.hidden_tag() }}
+                            <div class="annotation-enter">
+                                {{ subclusterform.cluster.label }}
+                                {{ subclusterform.cluster(class='cluster-control form-control form-control-sm') }}
+                            </div>
+                            <div>
+                                {{ subclusterform.submit(class='btn btn-sm btn-primary') }}
+                            </div>
+                        </form>
+                    </div>
+                    <div class="table-container">
+                        <table id="subcluster-table" class="display" data-ajax-url="{{ url_for('subcluster_table_data') }}">
+                            <thead>
+                                <tr>
+                                    <th>gene</th>
+                                    <th>avg_log2FC</th>
+                                    <th>pct1</th>
+                                    <th>pct2</th>
+                                    <th>p_val_adj</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be dynamically loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+
+
             </div>
+
 
 
         <br>

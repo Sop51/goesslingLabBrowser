@@ -46,3 +46,7 @@ class GroupSubplotForm(FlaskForm):
 class TimepointForm(FlaskForm):
     timepoint = RadioField('View Timepoint Information', choices=[('Yes', 'yes'), ('No', 'no')], validators=[DataRequired()])
     submit = SubmitField('Submit')
+
+class SubClusterForm(FlaskForm):
+    cluster = SelectField('Cluster of Interest', choices=[], validators=[DataRequired()])
+    submit = SubmitField('Submit')
