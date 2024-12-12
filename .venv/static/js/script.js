@@ -8,6 +8,12 @@ function showSpinner() {
     uploadButton.style.display = 'none';
 }
 
+// hide the spinner once the form is submitted or the page is reloaded 
+window.onload = function() {
+    const spinner = document.getElementById('spinner');
+    spinner.style.display = 'none';  // Hide spinner when page loads, in case it's left visible
+};
+
 // Rendering the subcluster annotation table
 $(document).ready(function() {
     // Initially hide the table until the necessary data is ready
@@ -101,6 +107,10 @@ $(document).ready(function() {
     // Function to initialize the DataTable
     function initializeTable(data) {
         $('#annotation-table').show();
+        // Destroy any existing DataTable instance before initializing a new one
+        if ($.fn.dataTable.isDataTable('#annotation-table')) {
+            $('#annotation-table').DataTable().clear().destroy();
+        }
         // Initialize the DataTable after data is fetched
         var dataTable = $('#annotation-table').DataTable({
             "data": data,  // Load the data directly into the table
@@ -220,7 +230,8 @@ $('#group-form').on('submit', function(e) {
         success: function(response) {
             // Check if response contains error
             if (response.error) {
-                alert('Error: ' + response.error);
+                alert('Error:'+ response.error);
+                $('#group-plot-container').html('');
             } else {
                 $('#group-plot-container').html('<img src="' + response.group_plot + '" alt="Group UMAP Plot" class="img-fluid">');
             }
@@ -237,6 +248,7 @@ $(document).on('submit', '#celltype-subcluster-form', function(e) {
     console.log($('#celltype-plot-subcluster-url').data('ajax-url'));
     e.preventDefault();  // Prevent the default form submission
     console.log("Form submitted!")
+
     // Retrieve the AJAX URL from the data attribute
     var ajaxUrl = $('#celltype-plot-subcluster-url').data('ajax-url');
 
@@ -250,6 +262,13 @@ $(document).on('submit', '#celltype-subcluster-form', function(e) {
                 alert('Error: ' + response.error);
             } else {
                 $('#celltype-plot-subcluster-container').html('<img src="' + response.group_subcluster_plot + '" alt="Group UMAP Plot" class="img-fluid">');
+                if (response.cluster_cols) {
+                    var select = $('#cluster-form select[name="cluster"]');
+                    select.empty();
+                    response.cluster_cols.forEach(function(col) {
+                        select.append(new Option(col, col));
+                    });
+                }
             }
         },
         error: function(xhr) {

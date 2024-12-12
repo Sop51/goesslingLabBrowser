@@ -98,26 +98,31 @@ def plot_group_umap(group):
     group_check = ro.r(f'"{group}" %in% colnames(seurat_obj@meta.data)')
     if not group_check[0]:
         return None
-    # create the UMAP plot for the group
-    ro.r(
-        f'group_plot <- DimPlot(seurat_obj, reduction = "umap", group.by = "{group}", label = TRUE, label.size = 5, repel = TRUE)')
-    # create a temporary file to save the plot
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-        temp_filename = temp_file.name
-        # use the file name to create the plot
-        ro.r(f'png("{temp_filename}", width = 800, height = 800, res = 150)')
-        # print the plot to the device
-        ro.r('print(group_plot)')
-        # finalize the plot
-        ro.r('dev.off()')
-    # read the plot file and convert to base64
-    with open(temp_filename, "rb") as img_file:
-        img_data = img_file.read()
-        plot_url = base64.b64encode(img_data).decode('utf-8')
-    # remove the temporary file after processing
-    os.remove(temp_filename)
-    # return the plot as a base64-encoded string to embed in HTML
-    return f"data:image/png;base64,{plot_url}"
+    
+    # fix the error where the viewport is too small
+    try:
+        # create the UMAP plot for the group
+        ro.r(
+            f'group_plot <- DimPlot(seurat_obj, reduction = "umap", group.by = "{group}", label = TRUE, label.size = 5, repel = TRUE)')
+        # create a temporary file to save the plot
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+            temp_filename = temp_file.name
+            # use the file name to create the plot
+            ro.r(f'png("{temp_filename}", width = 800, height = 800, res = 150)')
+            # print the plot to the device
+            ro.r('print(group_plot)')
+            # finalize the plot
+            ro.r('dev.off()')
+        # read the plot file and convert to base64
+        with open(temp_filename, "rb") as img_file:
+            img_data = img_file.read()
+            plot_url = base64.b64encode(img_data).decode('utf-8')
+        # remove the temporary file after processing
+        os.remove(temp_filename)
+        # return the plot as a base64-encoded string to embed in HTML
+        return f"data:image/png;base64,{plot_url}"
+    except Exception as e:
+        return None
 
 # define a function to generate the differential expression table based on the annotation
 def generate_table(annotation):
@@ -172,8 +177,10 @@ def timepoint_plot():
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
+    # initially check if the sublcuster object exists
+    
     # subset the object based on the selected cell_type
-    ro.r(f'timepoint_plot <- DimPlot(subcluster_obj, reduction = "umap", group.by = "timepoint", label = TRUE, label.size = 5, repel = TRUE)')
+    ro.r(f'timepoint_plot <- DimPlot(subcluster_obj, reduction = "umap", group.by = "timepoint", repel = TRUE)')
     # create a temporary file to save the plot
     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
         temp_filename = temp_file.name
@@ -229,6 +236,7 @@ def sub_cluster_plot(cell_type):
         file_path = os.path.abspath(os.path.join(data_folder, file_name))
         # load in the seurat obj
         ro.r(f'subcluster_obj <- LoadH5Seurat("{file_path}")')
+        ro.r('assign("subcluster_obj", subcluster_obj, envir = .GlobalEnv)')
         # load the seurat obj into python
         subcluster_obj = ro.r('subcluster_obj')
         # store as a global variable
@@ -363,12 +371,6 @@ def home():
             with localconverter(pandas2ri.converter):
                 unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
                 celltypecols = [str(val) for val in unique_values]
-            if 'final_cell_type' in session and ro.r('exists("subcluster_obj", envir = .GlobalEnv)')[0]:
-                with localconverter(pandas2ri.converter):
-                    unique_values = ro.r(f'levels(subcluster_obj@meta.data[[final_celltype]])')
-                    cluster_cols = [str(val) for val in unique_values]
-                    # store the values in the session
-                    session['subcluster_cols'] = cluster_cols
             # save the values in the session
             session['ann_cols'] = annotcols
             session['obs_columns'] = metadata_columns
@@ -404,12 +406,6 @@ def home():
                 with localconverter(pandas2ri.converter):
                     unique_values = ro.r(f'levels(seurat_obj@meta.data[["cell.type.9.long"]])')
                     celltypecols = [str(val) for val in unique_values]
-                if 'final_cell_type' in session and ro.r('exists("subcluster_obj", envir = .GlobalEnv)')[0]:
-                    with localconverter(pandas2ri.converter):
-                        unique_values = ro.r(f'levels(subcluster_obj@meta.data[[final_celltype]])')
-                        cluster_cols = [str(val) for val in unique_values]
-                        # store the values in the session
-                        session['subcluster_cols'] = cluster_cols
                 # save the cols to the sessions
                 session['ann_cols'] = annotcols
                 session['obs_columns'] = metadata_columns
@@ -492,6 +488,9 @@ def plot_group():
         session['selected_group'] = selected_group
         group_plot = plot_group_umap(selected_group)
 
+        if group_plot is None:
+            return jsonify({"error": f"Not an informative UMAP option. Please select a different group."})
+
         # Return JSON response
         return jsonify(group_plot=group_plot)
 
@@ -569,6 +568,7 @@ def subcluster_table_data():
 @app.route('/plot_group_subcluster', methods=['POST'])
 def plot_group_subcluster():
     groupsubplotform = GroupSubplotForm()
+    subclusterform = SubClusterForm()
 
     if 'celltype_cols' in session:
         groupsubplotform.group.choices = [(col, col) for col in session['celltype_cols']]
@@ -579,13 +579,17 @@ def plot_group_subcluster():
         session['selected_celltype'] = selected_group 
 
         cluster_cols = []
-        if ro.r('exists("subcluster_obj", envir = .GlobalEnv)')[0]:
+        group_subcluster_plot = sub_cluster_plot(selected_group)
+        cell_type = session.get('final_cell_type')
+
+        if ro.r('exists("subcluster_obj", envir = .GlobalEnv)'):
             with localconverter(pandas2ri.converter):
-                unique_values = ro.r(f'levels(subcluster_obj@meta.data[[final_celltype]])')
+                unique_values = ro.r(f'levels(subcluster_obj@meta.data[["{cell_type}"]])')
+                print(unique_values)
                 cluster_cols = [str(val) for val in unique_values]
                 session['subcluster_cols'] = cluster_cols  # Save the columns in the session
+                print(f"Subcluster columns: {session.get('subcluster_cols')}")
 
-        group_subcluster_plot = sub_cluster_plot(selected_group)
         return jsonify(group_subcluster_plot=group_subcluster_plot, cluster_cols=cluster_cols)
     return jsonify(error="Invalid form submission"), 400
 
