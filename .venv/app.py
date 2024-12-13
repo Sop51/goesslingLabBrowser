@@ -177,10 +177,39 @@ def timepoint_plot():
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
-    # initially check if the sublcuster object exists
-    
     # subset the object based on the selected cell_type
     ro.r(f'timepoint_plot <- DimPlot(subcluster_obj, reduction = "umap", group.by = "timepoint", repel = TRUE)')
+    # create a temporary file to save the plot
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+        temp_filename = temp_file.name
+        # use the file name to create the plot
+        ro.r(f'png("{temp_filename}", width = 800, height = 800, res = 150)')
+        # print the plot to the device
+        ro.r('print(timepoint_plot)')
+        # finalize the plot
+        ro.r('dev.off()')
+    # read the plot file and convert to base64
+    with open(temp_filename, "rb") as img_file:
+        img_data = img_file.read()
+        plot_url = base64.b64encode(img_data).decode('utf-8')
+    # remove the temporary file after processing
+    os.remove(temp_filename)
+    # return the plot as a base64-encoded string to embed in HTML
+    return f"data:image/png;base64,{plot_url}"
+
+# define a function to generate the plot for timepoint
+def timepoint_plot_violin():
+    pandas2ri.activate()
+    # load the seurat library
+    ro.r('library(Seurat)')
+    ro.r('library(SeuratDisk)')
+    ro.r('library(ggplot2)')
+    # get the gene from the session 
+    gene = session.get('subcluster_gene')
+    if gene == None:
+        return None
+    # subset the object based on the selected cell_type
+    ro.r(f'timepoint_plot <- VlnPlot(subcluster_obj, features = "{gene}", group.by = "timepoint")')
     # create a temporary file to save the plot
     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
         temp_filename = temp_file.name
@@ -274,6 +303,8 @@ def gene_plot_subcluster(gene):
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
+    # store the chosen gene in the session
+    session['subcluster_gene'] = gene
     # check if the selected gene exists
     gene_check = ro.r(f'"{gene}" %in% rownames(subcluster_obj)')
     if not gene_check[0]:
@@ -610,11 +641,13 @@ def plot_timepoint_subcluster():
 
     if timepointform.validate_on_submit():
         response = timepointform.timepoint.data
-        if response == 'Yes' or response == 'yes':
+        if response == 'umap' or response =='Umap':
             t_plot = timepoint_plot()
             return jsonify(t_plot=t_plot)
         else:
-            t_plot = None
+            t_plot = timepoint_plot_violin()
+            if t_plot is None:
+                return jsonify({"error": f"Please select a gene first"})
             return jsonify(t_plot=t_plot)
     return jsonify(error="Invalid form submission"), 400
 

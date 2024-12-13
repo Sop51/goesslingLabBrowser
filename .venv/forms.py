@@ -44,7 +44,7 @@ class GroupSubplotForm(FlaskForm):
 
 # create a form to display the timepoint plot
 class TimepointForm(FlaskForm):
-    timepoint = RadioField('View Timepoint Information', choices=[('Yes', 'yes'), ('No', 'no')], validators=[DataRequired()])
+    timepoint = RadioField('View Timepoint Information', choices=[('Violin Plot', 'violin plot'), ('Umap', 'umap')], validators=[DataRequired()])
     submit = SubmitField('Submit')
 
 class SubClusterForm(FlaskForm):
