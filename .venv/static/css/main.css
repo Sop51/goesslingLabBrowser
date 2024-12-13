@@ -210,6 +210,8 @@ input[type="submit"]:hover {
 /* Three Columns Layout For the Subcluster Tab*/
 .three-columns-container {
     display: flex;
+    width: 100%;
+    flex-wrap: nowrap;
     justify-content: space-between; /* Space between columns */
     gap: 20px; /* Add spacing between columns */
     margin-top: 20px;

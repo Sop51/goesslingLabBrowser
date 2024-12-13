@@ -53,7 +53,7 @@
                         <div class="upload-box p-2 mb-3">
                             <h5 class="mb-2">Upload File</h5>
                             <h7 class="mb-2">File must be in .H5Seurat format</h7>
-                            <form id="uploadForm" action="{{ url_for('home') }}" method="POST" enctype="multipart/form-data" onsubmit="showSpinner()">
+                            <form id="uploadForm" action="{{ url_for('home') }}" method="POST" enctype="multipart/form-data" onsubmit="showSpinnerUpload()">
                                 {{ fileform.hidden_tag() }}
                                 <div class="input-group">
                                     {{ fileform.file(class='form-control') }}
@@ -61,11 +61,11 @@
                                         {{ fileform.submit(class='btn btn-sm btn-primary') }}
                                     </div>
                                 </div>
-                                <div class="spinner" id="spinner"></div>
+                                <div class="spinner" id="upload-spinner"></div>
                             </form>
                             <div class="existing-files mt-2">
                                 <h5 class="mb-2">Select Existing File</h5>
-                                <form id="existing-file-form" action="{{ url_for('home') }}" method="POST" onsubmit="showSpinner()">
+                                <form id="existing-file-form" action="{{ url_for('home') }}" method="POST" onsubmit="showSpinnerExisting()">
                                     <select name="existing_file" class="form-control form-control-sm">
                                         <option value="">-- Choose a file --</option>
                                         {% for filename in existing_files %}
@@ -73,7 +73,7 @@
                                         {% endfor %}
                                     </select>
                                     <button type="submit" class="btn btn-sm btn-primary mt-2">Load File</button>
-                                    <div class="spinner" id="spinner"></div>
+                                    <div class="spinner" id="existing-spinner"></div>
                                 </form>
                             </div>
                         </div>
@@ -170,12 +170,12 @@
                 <h4>Note: this tab is specific to issacs data currently</h4>
                 <h5>Please select a cell type before selecting a gene or displaying timepoint information</h5>
 
-                <div class="three-columns-container" style="display: flex; gap: 20px;">
+                <div class="three-columns-container" style="display: flex; gap: 20px; flex-wrap: nowrap; justify-content: space-between;">
                     <!-- Celltype Subcluster Plot -->
                     <div class="column group-selection" id="celltype-subcluster-section">
                         <div id="celltype-plot-subcluster-url" data-ajax-url="{{ url_for('plot_group_subcluster') }}">
                                 <h5 class="mb-2">Select Cell Type</h5>
-                                <form id="celltype-subcluster-form" class="groupSubplotForm" enctype="multipart/form-data">
+                                <form id="celltype-subcluster-form" class="groupSubplotForm" enctype="multipart/form-data" onsubmit="showSpinnerCluster()">
                                     {{ groupsubplotform.hidden_tag() }}
                                     <div class="form-group-subcluster">
                                         {{ groupsubplotform.group.label }}
@@ -183,6 +183,10 @@
                                     </div>
                                     <div>
                                         {{ groupsubplotform.submit(class='btn btn-sm btn-primary') }}
+                                    </div>
+                                    <div class="spinner-container" id="spinner-container" style="display: none;">
+                                        <div class="spinner" id="cluster-spinner" style="display: inline-block;"></div>
+                                        <span id="spinner-message" style="display: inline-block; margin-left: 10px;">Loading Data...</span>
                                     </div>
                                 </form>
                             <div class="plot-container" id="celltype-plot-subcluster-container">

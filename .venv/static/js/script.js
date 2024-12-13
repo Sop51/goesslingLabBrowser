@@ -1,12 +1,29 @@
 // Spinner function for upload
-function showSpinner() {
-    const spinner = document.getElementById('spinner');
-    const uploadButton = document.getElementById('uploadButton');
-
+function showSpinnerUpload() {
+    const spinner = document.getElementById('upload-spinner');
     // Show the spinner and hide the button
     spinner.style.display = 'inline-block';
-    uploadButton.style.display = 'none';
 }
+
+// Spinner function for existing file
+function showSpinnerExisting() {
+    const spinner = document.getElementById('existing-spinner');
+    // Show the spinner and hide the button
+    spinner.style.display = 'inline-block';
+}
+
+// Spinner function for subcluster plot
+function showSpinnerCluster() {
+    const spinnerContainer = document.getElementById('spinner-container');
+    const spinner = document.getElementById('cluster-spinner');
+    const message = document.getElementById('spinner-message');
+    
+    // Show the spinner and message
+    spinnerContainer.style.display = 'inline-block';
+    spinner.style.display = 'inline-block';
+    message.style.display = 'inline-block';
+    message.textContent = 'Loading...';  // You can update the message dynamically
+} 
 
 // hide the spinner once the form is submitted or the page is reloaded 
 window.onload = function() {
@@ -245,18 +262,22 @@ $('#group-form').on('submit', function(e) {
 
 // handle group subcluster plot submission
 $(document).on('submit', '#celltype-subcluster-form', function(e) {
-    console.log($('#celltype-plot-subcluster-url').data('ajax-url'));
     e.preventDefault();  // Prevent the default form submission
-    console.log("Form submitted!")
 
     // Retrieve the AJAX URL from the data attribute
     var ajaxUrl = $('#celltype-plot-subcluster-url').data('ajax-url');
+
+    // Show the spinner before making the request
+    showSpinnerCluster();
 
     $.ajax({
         url: ajaxUrl,  // Use the variable defined above
         type: 'POST',
         data: $(this).serialize(),
         success: function(response) {
+            // Hide the spinner and message after the plot is generated
+            const spinnerContainer = document.getElementById('spinner-container');
+            spinnerContainer.style.display = 'none';
             // Check if response contains error
             if (response.error) {
                 alert('Error: ' + response.error);

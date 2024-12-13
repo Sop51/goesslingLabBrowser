@@ -39,7 +39,7 @@ class GeneSubplotForm(FlaskForm):
 
 # create a form to select the cell type of interest
 class GroupSubplotForm(FlaskForm):
-    group = SelectField('Group of Interest', choices=[], validators=[DataRequired()])
+    group = SelectField('Cell Type of Interest', choices=[], validators=[DataRequired()])
     submit = SubmitField('Submit')
 
 # create a form to display the timepoint plot
