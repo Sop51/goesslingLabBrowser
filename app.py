@@ -1,20 +1,13 @@
-from importlib.metadata import metadata
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from forms import SubClusterForm, GeneForm, GroupForm, UploadFileForm, LoginForm, AnnotationForm, GroupSubplotForm, GeneSubplotForm, TimepointForm
 import os
 from dotenv import load_dotenv
-import io
 import base64
-import matplotlib.pyplot as plt
-import pandas as pd
 import re
-from numpy.f2py.symbolic import as_string
 import rpy2.robjects as ro
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 import tempfile
-from flask import make_response
-from datetime import datetime, timedelta
 
 # load environment variables from .env file
 load_dotenv()
@@ -33,6 +26,7 @@ PASSWORD = os.getenv('PASSWORD')
 UPLOAD_FOLDER = 'uploads/'
 app.config['UPLOAD_FILES_DEST'] = UPLOAD_FOLDER
 
+# define and configure the subcluster folder destination
 DATA_FOLDER = 'subclusterData/'
 app.config['DATA_FILES_DEST'] = DATA_FOLDER
 
@@ -40,8 +34,11 @@ app.config['DATA_FILES_DEST'] = DATA_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# create a global variable to hold the loaded seurat object
-# also global variables for all the sub clusters
+# create the subcluster folder if it doesnt exist
+if not os.path.exists(DATA_FOLDER):
+    os.makedirs(DATA_FOLDER)
+
+# create global variables to hold the loaded seurat objects
 seurat_obj = None
 Hepatocyte = None
 Biliary_Epithelial_Cell = None
@@ -56,12 +53,12 @@ Neuron = None
 # define a function to plot the gene UMAP
 def plot_gene_umap(gene):
     pandas2ri.activate()
-    # Load the required libraries in R
+    # load the required libraries in R
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     # load in the seurat obj
     global seurat_obj
-    # check if the gene exists in the Seurat object
+    # check if the gene exists in the seurat object
     gene_check = ro.r(f'"{gene}" %in% rownames(seurat_obj)')
     if not gene_check[0]:
         return None # return nothing if no
@@ -88,13 +85,13 @@ def plot_gene_umap(gene):
 # define a function to plot the group umap
 def plot_group_umap(group):
     pandas2ri.activate()
-    # load the Seurat library in R
+    # load the libraries in r
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
     # load in the seurat obj
     global seurat_obj
-    # check if the group exists in the Seurat object metadata
+    # check if the group exists in the seurat object metadata
     group_check = ro.r(f'"{group}" %in% colnames(seurat_obj@meta.data)')
     if not group_check[0]:
         return None
@@ -200,7 +197,7 @@ def timepoint_plot():
 # define a function to generate the plot for timepoint
 def timepoint_plot_violin():
     pandas2ri.activate()
-    # load the seurat library
+    # load the r libraries
     ro.r('library(Seurat)')
     ro.r('library(SeuratDisk)')
     ro.r('library(ggplot2)')
@@ -460,65 +457,76 @@ def home():
                            geneform=geneform, existing_files=existing_files, groupsubplotform=groupsubplotform, genesubplotform=genesubplotform,
                            timepointform=timepointform, subclusterform=subclusterform)
 
+# create the gene plot (overall, not subcluster)
 @app.route('/plot_gene', methods=['POST'])
 def plot_gene():
+    # create the form instances
     groupform = GroupForm()
     geneform = GeneForm()
     fileform = UploadFileForm()
     annotationform = AnnotationForm()
 
-
+    # populate the form columns to maintain across submissions
     if 'obs_columns' in session:
         groupform.group.choices = [(col, col) for col in session['obs_columns']]
     if 'ann_cols' in session:
         annotationform.annotation.choices = [(annotation, annotation) for annotation in session['ann_cols']]
-
+    # populate the selected choices to maintain across submissions
     if 'selected_group' in session:
         groupform.group.data = session['selected_group']
     if 'annotation' in session:
         annotationform.annotation.data = session['annotation']
 
+    # validate the form submission
     if geneform.validate_on_submit():
+        # get the gene of interest and create the plot
         gene_of_interest = geneform.gene.data
         session['gene_of_interest'] = gene_of_interest
         gene_plot = plot_gene_umap(gene_of_interest)
 
         if gene_plot is None:
-            # If gene is not found, flash an error message
+            #if gene is not found, flash an error message
             return jsonify({"error": f"Gene '{gene_of_interest}' not found in the dataset."})
 
-        # Return JSON response
+        # return JSON response
         return jsonify(gene_plot=gene_plot)
 
-    return jsonify(error="Invalid form submission"), 400  # Return error if form is invalid
+    return jsonify(error="Invalid form submission"), 400  #return error if form is invalid
 
-
+# create the route to plot the group plot
 @app.route('/plot_group', methods=['POST'])
 def plot_group():
+    # define the form instances
     groupform = GroupForm()
     geneform = GeneForm()
     fileform = UploadFileForm()
     annotationform = AnnotationForm()
 
+    # populate the form choices to maintain across submissions
     if 'obs_columns' in session:
         groupform.group.choices = [(col, col) for col in session['obs_columns']]
     if 'ann_cols' in session:
         annotationform.annotation.choices = [(annotation, annotation) for annotation in session['ann_cols']]
 
+    # ensure the gene plot is maintained across submissions
     gene_plot = None
     if 'gene_plot' in request.form:
         gene_plot = request.form['gene_plot']
 
+    # ensure the users choices are maintained across submissions
     if 'gene_of_interest' in session:
         geneform.gene.data = session['gene_of_interest']
     if 'annotation' in session:
         annotationform.annotation.data = session['annotation']
 
+    # validate the form submission
     if groupform.validate_on_submit():
+        # create the group plot with the users selected group
         selected_group = groupform.group.data
         session['selected_group'] = selected_group
         group_plot = plot_group_umap(selected_group)
 
+        # if option selected doesnt work for the umap
         if group_plot is None:
             return jsonify({"error": f"Not an informative UMAP option. Please select a different group."})
 
@@ -527,45 +535,54 @@ def plot_group():
 
     return jsonify(error="Invalid form submission"), 400  # Return error if form is invalid
 
+# define the route to make the DE table
 @app.route('/make_table', methods=['POST'])
 def make_table():
+    # create the annotation form instance
     annotationform = AnnotationForm()
+    # populate the form choices
     if 'ann_cols' in session:
         annotationform.annotation.choices = [(annotation, annotation) for annotation in session['ann_cols']]
+    # validate the form submission
     if annotationform.validate_on_submit():
+        # submit the annotation and generate the table
         annotation = annotationform.annotation.data
-        print(f"Annotation submitted: {annotation}")
         session['annotation'] = annotation
-        # Instead of redirecting, return a JSON response
+        # instead of redirecting return a JSON response
         return jsonify({'status': 'success', 'message': 'Annotation saved'})
     else:
         print("Form validation failed:", annotationform.errors)
         return jsonify({'status': 'error', 'message': 'Form validation failed'}), 400
 
+# define a route to create the subcluster table
 @app.route('/make_subcluster_table', methods=['POST'])
 def make_subcluster_table():
+    # create the form instance
     subclusterform = SubClusterForm()
+    # populate the forms choices
     if 'subcluster_cols' in session:
         subclusterform.cluster.choices = [(col, col) for col in session['subcluster_cols']]
+    # validate the form submission
     if subclusterform.validate_on_submit():
+        # create the table with the users choice
         subcluster = subclusterform.cluster.data
         session['subcluster'] = subcluster
-        # Instead of redirecting, return a JSON response
+        # instead of redirecting return a JSON response
         return jsonify({'status': 'success', 'message': 'Annotation saved'})
     else:
         print("Form validation failed:", subclusterform.errors)
         return jsonify({'status': 'error', 'message': 'Form validation failed'}), 400
 
+# create the route to generate the table data
 @app.route('/api/table_data', methods=['GET'])
 def table_data():
+    # ensure the user is logged in
     if not session.get('logged_in'):
         return jsonify([])
 
     # get the selected annotation from the session
     annotation = session.get('annotation')
     filepath = session.get('filepath')
-
-    print(f"Selected annotation: {annotation}")
 
     if annotation and filepath:
         # generate table data based on the annotation
@@ -577,8 +594,10 @@ def table_data():
     else:
         return jsonify([])  # return an empty JSON response if no data
 
+# define the route to generate the subcluster table data
 @app.route('/api/subcluster_table_data', methods=['GET'])
 def subcluster_table_data():
+    # ensure the user is logged in
     if not session.get('logged_in'):
         return jsonify([])
 
@@ -598,22 +617,26 @@ def subcluster_table_data():
 # define a route for the group plot
 @app.route('/plot_group_subcluster', methods=['POST'])
 def plot_group_subcluster():
+    # create the form instances
     groupsubplotform = GroupSubplotForm()
     subclusterform = SubClusterForm()
 
+    # populate the form choices
     if 'celltype_cols' in session:
         groupsubplotform.group.choices = [(col, col) for col in session['celltype_cols']]
 
+    # validate the form submission
     if groupsubplotform.validate_on_submit():
+        # generate the plot with the selected cell type
         selected_group = groupsubplotform.group.data
-        print(selected_group)
         session['selected_celltype'] = selected_group 
-
         cluster_cols = []
         group_subcluster_plot = sub_cluster_plot(selected_group)
         cell_type = session.get('final_cell_type')
 
+        # if the seurat obj already exists to aviod reloading
         if ro.r('exists("subcluster_obj", envir = .GlobalEnv)'):
+            # populate the form for the DE table choices with the cell type clusters
             with localconverter(pandas2ri.converter):
                 unique_values = ro.r(f'levels(subcluster_obj@meta.data[["{cell_type}"]])')
                 print(unique_values)
@@ -624,10 +647,13 @@ def plot_group_subcluster():
         return jsonify(group_subcluster_plot=group_subcluster_plot, cluster_cols=cluster_cols)
     return jsonify(error="Invalid form submission"), 400
 
+# create the route to plot the gene subcluster plot
 @app.route('/plot_gene_subcluster', methods=['POST'])
 def plot_gene_subcluster():
+    # create the form instance
     genesubplotform = GeneSubplotForm()
 
+    # validate the form submission and create the plot with selected gene
     if genesubplotform.validate_on_submit():
         gene_of_interest = genesubplotform.gene.data
         session['gene_of_interest_subcluster'] = gene_of_interest
@@ -635,11 +661,15 @@ def plot_gene_subcluster():
         return jsonify(gene_subcluster_plot=gene_subcluster_plot)
     return jsonify(error="Invalid form submission"), 400
 
+# create the route to plot the timepoint subcluster plot
 @app.route('/plot_timepoint_subcluster', methods=['POST'])
 def plot_timepoint_subcluster():
+    # create the form instance
     timepointform = TimepointForm()
 
+    # validate the form on submission
     if timepointform.validate_on_submit():
+        # plot either the umap or violin plot depending on user selection
         response = timepointform.timepoint.data
         if response == 'umap' or response =='Umap':
             t_plot = timepoint_plot()
