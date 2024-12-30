@@ -22,7 +22,7 @@ function showSpinnerCluster() {
     spinnerContainer.style.display = 'inline-block';
     spinner.style.display = 'inline-block';
     message.style.display = 'inline-block';
-    message.textContent = 'Loading...';  // You can update the message dynamically
+    message.textContent = 'Loading...';  
 } 
 
 // hide the spinner once the form is submitted or the page is reloaded 
