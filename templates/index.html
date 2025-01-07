@@ -51,6 +51,7 @@
                     <!-- Upload Box -->
                     <div class="col-md-12">
                         <div class="upload-box p-2 mb-3">
+			    <!-- COMMENT OUT FOR NOW --
                             <h5 class="mb-2">Upload File</h5>
                             <h7 class="mb-2">File must be in .H5Seurat format</h7>
                             <form id="uploadForm" action="{{ url_for('home') }}" method="POST" enctype="multipart/form-data" onsubmit="showSpinnerUpload()">
@@ -62,9 +63,9 @@
                                     </div>
                                 </div>
                                 <div class="spinner" id="upload-spinner"></div>
-                            </form>
+                            </form> ---->
                             <div class="existing-files mt-2">
-                                <h5 class="mb-2">Select Existing File</h5>
+                                <h5 class="mb-2">Select File</h5>
                                 <form id="existing-file-form" action="{{ url_for('home') }}" method="POST" onsubmit="showSpinnerExisting()">
                                     <select name="existing_file" class="form-control form-control-sm">
                                         <option value="">-- Choose a file --</option>

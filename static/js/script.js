@@ -1,9 +1,11 @@
+/*
 // Spinner function for upload
 function showSpinnerUpload() {
     const spinner = document.getElementById('upload-spinner');
     // Show the spinner and hide the button
     spinner.style.display = 'inline-block';
 }
+*/
 
 // Spinner function for existing file
 function showSpinnerExisting() {

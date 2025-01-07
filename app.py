@@ -367,8 +367,10 @@ def home():
     subclusterform = SubClusterForm()
     # list existing files in the uploads directory
     existing_files = os.listdir(app.config['UPLOAD_FILES_DEST'])
+    # NOTE CURRENT COMMENT OUT UPLOAD CODE - WILL BE CONTROLLED BY VM OWNER
     # new file being uploaded
     if request.method == 'POST':
+	'''
         if fileform.validate_on_submit():
             # get the file value from the form
             file = fileform.file.data
@@ -404,6 +406,7 @@ def home():
             session['obs_columns'] = metadata_columns
             session['celltype_cols'] = celltypecols
             return redirect(url_for('home'))  # redirect to avoid resubmission
+	    '''
         # handle case where wanted file already exists
         if 'existing_file' in request.form:
             # retrieve the selected file
@@ -463,7 +466,7 @@ def plot_gene():
     # create the form instances
     groupform = GroupForm()
     geneform = GeneForm()
-    fileform = UploadFileForm()
+    #fileform = UploadFileForm()
     annotationform = AnnotationForm()
 
     # populate the form columns to maintain across submissions
@@ -499,7 +502,7 @@ def plot_group():
     # define the form instances
     groupform = GroupForm()
     geneform = GeneForm()
-    fileform = UploadFileForm()
+    #fileform = UploadFileForm()
     annotationform = AnnotationForm()
 
     # populate the form choices to maintain across submissions
